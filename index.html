@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>校园聊天室</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: "Microsoft YaHei", Arial, sans-serif;
+            background: #f3f6fb;
+            color: #1f2937;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 900px;
+            margin: 40px auto;
+            background: #ffffff;
+            border-radius: 18px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #2563eb, #3b82f6);
+            color: white;
+            padding: 24px 28px;
+        }
+
+        .header h1 {
+            margin: 0;
+            font-size: 28px;
+        }
+
+        .header p {
+            margin: 8px 0 0;
+            opacity: 0.9;
+            font-size: 14px;
+        }
+
+        .join-area {
+            padding: 20px 28px;
+            border-bottom: 1px solid #e5e7eb;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            align-items: center;
+            background: #f9fafb;
+        }
+
+        .join-area input {
+            flex: 1;
+            min-width: 180px;
+            padding: 12px 14px;
+            border: 1px solid #d1d5db;
+            border-radius: 10px;
+            outline: none;
+            font-size: 14px;
+        }
+
+        .join-area input:focus,
+        .message-input input:focus {
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12);
+        }
+
+        .join-area button,
+        .message-input button {
+            border: none;
+            background: #2563eb;
+            color: white;
+            padding: 12px 18px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .join-area button:hover,
+        .message-input button:hover {
+            background: #1d4ed8;
+        }
+
+        .status-bar {
+            padding: 14px 28px;
+            background: #eff6ff;
+            border-bottom: 1px solid #dbeafe;
+            font-size: 14px;
+            color: #1d4ed8;
+        }
+
+        .chat-area {
+            padding: 20px 28px;
+            height: 420px;
+            overflow-y: auto;
+            background: #ffffff;
+        }
+
+        .message-list {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+        }
+
+        .message-list li {
+            margin-bottom: 12px;
+            padding: 12px 14px;
+            background: #f3f4f6;
+            border-radius: 12px;
+            line-height: 1.5;
+            word-break: break-word;
+        }
+
+        .message-list li.system {
+            background: #eef2ff;
+            color: #4338ca;
+        }
+
+        .message-input {
+            display: flex;
+            gap: 12px;
+            padding: 18px 28px 24px;
+            border-top: 1px solid #e5e7eb;
+            background: #f9fafb;
+        }
+
+        .message-input input {
+            flex: 1;
+            padding: 14px 16px;
+            border: 1px solid #d1d5db;
+            border-radius: 10px;
+            outline: none;
+            font-size: 14px;
+        }
+
+        .tip {
+            padding: 0 28px 20px;
+            font-size: 13px;
+            color: #6b7280;
+            background: #f9fafb;
+        }
+
+        @media (max-width: 640px) {
+            .container {
+                margin: 0;
+                border-radius: 0;
+                min-height: 100vh;
+            }
+
+            .chat-area {
+                height: 50vh;
+            }
+
+            .join-area,
+            .message-input {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .join-area button,
+            .message-input button {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>校园聊天室</h1>
+            <p>轻量级即时聊天模块 · 适合课程群、班级群、校园场景</p>
+        </div>
+
+        <div class="join-area">
+            <input id="username" placeholder="请输入用户名">
+            <input id="room" placeholder="请输入房间名，例如：math / ai / 班级群">
+            <button onclick="joinRoom()">进入房间</button>
+        </div>
+
+        <div class="status-bar" id="statusBar">
+            当前状态：未进入房间
+        </div>
+
+        <div class="chat-area" id="chatArea">
+            <ul id="messages" class="message-list"></ul>
+        </div>
+
+        <div class="message-input">
+            <input id="message" placeholder="请输入消息后发送">
+            <button onclick="sendMessage()">发送</button>
+        </div>
+
+        <div class="tip">
+            提示：先输入用户名和房间名，再点击“进入房间”。
+        </div>
+    </div>
+
+    <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
+    <script>
+        const socket = io("http://localhost:5000");
+
+        let currentRoom = "";
+        let currentUsername = "";
+        let hasJoined = false;
+
+        function updateStatus(text) {
+            document.getElementById("statusBar").innerText = text;
+        }
+
+        function appendMessage(msg, isSystem = false) {
+            const li = document.createElement("li");
+            li.innerText = msg;
+
+            if (isSystem) {
+                li.classList.add("system");
+            }
+
+            document.getElementById("messages").appendChild(li);
+
+            const chatArea = document.getElementById("chatArea");
+            chatArea.scrollTop = chatArea.scrollHeight;
+        }
+
+        function joinRoom() {
+            const usernameInput = document.getElementById("username");
+            const roomInput = document.getElementById("room");
+
+            currentUsername = usernameInput.value.trim();
+            currentRoom = roomInput.value.trim();
+
+            if (!currentUsername || !currentRoom) {
+                alert("请输入用户名和房间名");
+                return;
+            }
+
+            document.getElementById("messages").innerHTML = "";
+
+            socket.emit("join", {
+                username: currentUsername,
+                room: currentRoom
+            });
+
+            hasJoined = true;
+            updateStatus(`当前状态：已进入房间【${currentRoom}】；当前用户：${currentUsername}`);
+        }
+
+        socket.on("history", function(messages) {
+            const messagesList = document.getElementById("messages");
+            messagesList.innerHTML = "";
+
+            messages.forEach(function(msg) {
+                appendMessage(msg, msg.startsWith("系统消息"));
+            });
+        });
+
+        socket.on("message", function(msg) {
+            appendMessage(msg, msg.startsWith("系统消息"));
+        });
+
+        function sendMessage() {
+            if (!hasJoined) {
+                alert("请先进入房间");
+                return;
+            }
+
+            const messageInput = document.getElementById("message");
+            const msg = messageInput.value.trim();
+
+            if (!msg) {
+                return;
+            }
+
+            socket.emit("message", {
+                username: currentUsername,
+                room: currentRoom,
+                msg: msg
+            });
+
+            messageInput.value = "";
+        }
+
+        document.getElementById("message").addEventListener("keydown", function(event) {
+            if (event.key === "Enter") {
+                sendMessage();
+            }
+        });
+    </script>
+</body>
+</html>
