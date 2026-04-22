@@ -30,17 +30,31 @@
             background: linear-gradient(135deg, #2563eb, #3b82f6);
             color: white;
             padding: 24px 28px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 16px;
         }
 
-        .header h1 {
+        .header-left h1 {
             margin: 0;
             font-size: 28px;
         }
 
-        .header p {
+        .header-left p {
             margin: 8px 0 0;
             opacity: 0.92;
             font-size: 14px;
+        }
+
+        .logout-btn {
+            border: none;
+            background: white;
+            color: #2563eb;
+            padding: 10px 16px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: 700;
         }
 
         .join-area {
@@ -63,12 +77,6 @@
             font-size: 14px;
         }
 
-        .join-area input:focus,
-        .message-input input:focus {
-            border-color: #3b82f6;
-            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12);
-        }
-
         .join-area button,
         .message-input button {
             border: none;
@@ -79,11 +87,6 @@
             cursor: pointer;
             font-size: 14px;
             font-weight: 600;
-        }
-
-        .join-area button:hover,
-        .message-input button:hover {
-            background: #1d4ed8;
         }
 
         .status-bar {
@@ -191,7 +194,8 @@
         }
 
         .message-row.other,
-        .message-row.system {
+        .message-row.system,
+        .message-row.ai {
             justify-content: flex-start;
         }
 
@@ -219,6 +223,13 @@
         .message-row.system .message-bubble {
             background: #eef2ff;
             color: #4338ca;
+            border-bottom-left-radius: 4px;
+        }
+
+        .message-row.ai .message-bubble {
+            background: #ecfdf5;
+            color: #065f46;
+            border: 1px solid #a7f3d0;
             border-bottom-left-radius: 4px;
         }
 
@@ -251,15 +262,25 @@
             padding: 18px 28px 24px;
             border-top: 1px solid #e5e7eb;
             background: #f9fafb;
+            align-items: center;
         }
 
-        .message-input input {
+        .message-input input[type="text"] {
             flex: 1;
             padding: 14px 16px;
             border: 1px solid #d1d5db;
             border-radius: 10px;
             outline: none;
             font-size: 14px;
+        }
+
+        .ai-toggle {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+            color: #374151;
+            white-space: nowrap;
         }
 
         .sidebar {
@@ -332,40 +353,20 @@
                 border-bottom: 1px solid #e5e7eb;
             }
         }
-
-        @media (max-width: 640px) {
-            .container {
-                margin: 0;
-                border-radius: 0;
-                min-height: 100vh;
-            }
-
-            .join-area,
-            .message-input {
-                flex-direction: column;
-                align-items: stretch;
-            }
-
-            .join-area button,
-            .message-input button {
-                width: 100%;
-            }
-
-            .message-bubble {
-                max-width: 85%;
-            }
-        }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
-            <h1>校园聊天室</h1>
-            <p>轻量级即时聊天模块 · 支持最近使用房间、聊天记录、时间戳、在线用户</p>
+            <div class="header-left">
+                <h1>校园聊天室</h1>
+                <p>第二阶段 + AI开关版：登录、数据库持久化、聊天记录、在线用户、AI助手</p>
+            </div>
+            <button class="logout-btn" onclick="logout()">退出登录</button>
         </div>
 
         <div class="join-area">
-            <input id="username" placeholder="请输入用户名" />
+            <input id="usernameDisplay" disabled />
             <input id="room" placeholder="也可以手动输入房间名" />
             <button onclick="joinRoom()">进入房间</button>
         </div>
@@ -379,14 +380,8 @@
                 <div class="sidebar-title">房间导航</div>
 
                 <div class="room-section">
-                    <div class="room-section-label">默认房间</div>
-                    <ul class="room-list" id="defaultRoomList">
-                        <li class="room-item" onclick="selectRoom('math')">math</li>
-                        <li class="room-item" onclick="selectRoom('ai')">ai</li>
-                        <li class="room-item" onclick="selectRoom('class-1')">class-1</li>
-                        <li class="room-item" onclick="selectRoom('dorm')">dorm</li>
-                        <li class="room-item" onclick="selectRoom('trade')">trade</li>
-                    </ul>
+                    <div class="room-section-label">房间列表</div>
+                    <ul class="room-list" id="defaultRoomList"></ul>
                 </div>
 
                 <div class="room-section">
@@ -402,12 +397,17 @@
                 </div>
 
                 <div class="message-input">
-                    <input id="message" placeholder="请输入消息后发送" />
+                    <label class="ai-toggle">
+                        <input type="checkbox" id="aiToggle">
+                        开启AI
+                    </label>
+
+                    <input id="message" type="text" placeholder="输入消息；开启AI后可用 @ai 提问" />
                     <button onclick="sendMessage()">发送</button>
                 </div>
 
                 <div class="tip">
-                    提示：先输入用户名，然后点击左侧房间，或者手动输入房间名后进入。
+                    提示：AI开关关闭时无法使用AI；AI开关开启后，只有输入 <b>@ai 问题</b> 才会触发AI回复。
                 </div>
             </div>
 
@@ -429,8 +429,8 @@
         let currentUsername = "";
         let hasJoined = false;
 
-        const defaultRooms = ["math", "ai", "class-1", "dorm", "trade"];
-        const recentRoomsKey = "recent_rooms";
+        const recentRoomsKey = "recent_rooms_v2";
+        let allRooms = [];
 
         function getRecentRooms() {
             const data = localStorage.getItem(recentRoomsKey);
@@ -449,33 +449,6 @@
             renderRecentRooms();
         }
 
-        function renderRecentRooms() {
-            const recentRoomList = document.getElementById("recentRoomList");
-            const emptyTip = document.getElementById("recentEmptyTip");
-            const recentRooms = getRecentRooms();
-
-            recentRoomList.innerHTML = "";
-
-            if (recentRooms.length === 0) {
-                emptyTip.style.display = "block";
-                return;
-            }
-
-            emptyTip.style.display = "none";
-
-            recentRooms.forEach(function(roomName) {
-                const li = document.createElement("li");
-                li.className = "room-item";
-                li.innerText = roomName;
-                li.onclick = function() {
-                    selectRoom(roomName);
-                };
-                recentRoomList.appendChild(li);
-            });
-
-            highlightRoom(currentRoom);
-        }
-
         function updateStatus(text) {
             document.getElementById("statusBar").innerText = text;
         }
@@ -487,6 +460,8 @@
             let rowClass = "other";
             if (message.type === "system") {
                 rowClass = "system";
+            } else if (message.type === "ai") {
+                rowClass = "ai";
             } else if (message.sender === currentUsername) {
                 rowClass = "self";
             }
@@ -554,15 +529,84 @@
             });
         }
 
-        function joinRoom() {
-            const usernameInput = document.getElementById("username");
-            const roomInput = document.getElementById("room");
+        function renderRoomList() {
+            const ul = document.getElementById("defaultRoomList");
+            ul.innerHTML = "";
 
-            currentUsername = usernameInput.value.trim();
+            allRooms.forEach(roomName => {
+                const li = document.createElement("li");
+                li.className = "room-item";
+                li.innerText = roomName;
+                li.onclick = function() {
+                    selectRoom(roomName);
+                };
+                ul.appendChild(li);
+            });
+
+            highlightRoom(currentRoom);
+        }
+
+        function renderRecentRooms() {
+            const recentRoomList = document.getElementById("recentRoomList");
+            const emptyTip = document.getElementById("recentEmptyTip");
+            const recentRooms = getRecentRooms();
+
+            recentRoomList.innerHTML = "";
+
+            if (recentRooms.length === 0) {
+                emptyTip.style.display = "block";
+                return;
+            }
+
+            emptyTip.style.display = "none";
+
+            recentRooms.forEach(function(roomName) {
+                const li = document.createElement("li");
+                li.className = "room-item";
+                li.innerText = roomName;
+                li.onclick = function() {
+                    selectRoom(roomName);
+                };
+                recentRoomList.appendChild(li);
+            });
+
+            highlightRoom(currentRoom);
+        }
+
+        async function loadMe() {
+            const res = await fetch("/api/me");
+            const data = await res.json();
+
+            if (!data.ok) {
+                window.location.href = "/login";
+                return;
+            }
+
+            currentUsername = data.username;
+            document.getElementById("usernameDisplay").value = currentUsername;
+        }
+
+        async function loadRooms() {
+            const res = await fetch("/api/rooms");
+            const data = await res.json();
+
+            if (data.ok) {
+                allRooms = data.rooms;
+                renderRoomList();
+            }
+        }
+
+        async function logout() {
+            await fetch("/api/logout", { method: "POST" });
+            window.location.href = "/login";
+        }
+
+        function joinRoom() {
+            const roomInput = document.getElementById("room");
             currentRoom = roomInput.value.trim();
 
             if (!currentUsername || !currentRoom) {
-                alert("请输入用户名和房间名");
+                alert("请先登录并输入房间名");
                 return;
             }
 
@@ -571,24 +615,22 @@
             document.getElementById("onlineCount").innerText = "当前 0 人";
 
             socket.emit("join", {
-                username: currentUsername,
                 room: currentRoom
             });
 
             hasJoined = true;
+
+            if (!allRooms.includes(currentRoom)) {
+                allRooms.unshift(currentRoom);
+                renderRoomList();
+            }
+
             addRecentRoom(currentRoom);
             highlightRoom(currentRoom);
             updateStatus(`当前状态：已进入房间【${currentRoom}】；当前用户：${currentUsername}`);
         }
 
         function selectRoom(roomName) {
-            const username = document.getElementById("username").value.trim();
-
-            if (!username) {
-                alert("请先输入用户名");
-                return;
-            }
-
             document.getElementById("room").value = roomName;
             joinRoom();
         }
@@ -622,15 +664,16 @@
 
             const messageInput = document.getElementById("message");
             const msg = messageInput.value.trim();
+            const aiEnabled = document.getElementById("aiToggle").checked;
 
             if (!msg) {
                 return;
             }
 
             socket.emit("message", {
-                username: currentUsername,
                 room: currentRoom,
-                msg: msg
+                msg: msg,
+                ai_enabled: aiEnabled
             });
 
             messageInput.value = "";
@@ -642,7 +685,13 @@
             }
         });
 
-        renderRecentRooms();
+        async function initPage() {
+            await loadMe();
+            await loadRooms();
+            renderRecentRooms();
+        }
+
+        initPage();
     </script>
 </body>
 </html>
