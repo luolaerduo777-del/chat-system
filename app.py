@@ -1,3 +1,4 @@
+import os
 from datetime import datetime
 from pathlib import Path
 
@@ -21,7 +22,10 @@ app = Flask(__name__, static_folder=None)
 app.secret_key = "chat-system-secret-key-change-me"
 socketio = SocketIO(app, cors_allowed_origins="*")
 
+# 房间在线用户：{"room_name": ["user1", "user2"]}
 room_users = {}
+
+# 当前连接：{"sid": {"username": "...", "room": "..."}}
 user_sessions = {}
 
 DEFAULT_ROOMS = ["math", "ai", "class-1", "dorm", "trade"]
@@ -39,7 +43,7 @@ def current_username():
     return session.get("username")
 
 
-def login_required():
+def is_logged_in() -> bool:
     return "username" in session
 
 
@@ -68,7 +72,7 @@ def broadcast_user_list(room_name: str):
 
 @app.route("/")
 def root():
-    if login_required():
+    if is_logged_in():
         return send_from_directory(BASE_DIR, "index.html")
     return redirect("/login")
 
@@ -127,7 +131,7 @@ def api_logout():
 
 @app.route("/api/me")
 def api_me():
-    if not login_required():
+    if not is_logged_in():
         return jsonify({"ok": False, "message": "未登录"}), 401
     return jsonify({"ok": True, "username": session["username"]})
 
@@ -135,8 +139,8 @@ def api_me():
 @app.route("/api/rooms")
 def api_rooms():
     db_rooms = get_all_rooms()
-    room_set = list(dict.fromkeys(DEFAULT_ROOMS + db_rooms))
-    return jsonify({"ok": True, "rooms": room_set})
+    room_list = list(dict.fromkeys(DEFAULT_ROOMS + db_rooms))
+    return jsonify({"ok": True, "rooms": room_list})
 
 
 @socketio.on("join")
@@ -155,6 +159,7 @@ def handle_join(data):
 
     create_room_if_not_exists(room_name, now_full_time())
 
+    # 如果之前已经在别的房间，先退出旧房间
     if sid in user_sessions:
         old_username = user_sessions[sid]["username"]
         old_room = user_sessions[sid]["room"]
@@ -190,9 +195,11 @@ def handle_join(data):
         "room": room_name
     }
 
+    # 先发送历史消息
     history = get_recent_messages(room_name, limit=100)
     emit("history", history)
 
+    # 再广播进入房间消息
     join_message = build_system_message(f"{username} 进入了房间 {room_name}")
     save_message(
         room_name,
@@ -202,8 +209,8 @@ def handle_join(data):
         join_message["time"],
         now_full_time()
     )
-
     socketio.emit("message", join_message, to=room_name)
+
     broadcast_user_list(room_name)
 
 
@@ -221,8 +228,8 @@ def handle_message(data):
     if not room_name or not msg:
         return
 
+    # 用户自己的消息先正常广播
     user_message = build_user_message(username, msg, "user")
-
     save_message(
         room_name,
         user_message["sender"],
@@ -231,10 +238,9 @@ def handle_message(data):
         user_message["time"],
         now_full_time()
     )
-
     socketio.emit("message", user_message, to=room_name)
 
-    # AI开关打开 + @ai大小写任意 才触发
+    # AI开关打开 + @ai（大小写兼容）才触发
     if ai_enabled and msg.lower().startswith("@ai"):
         ai_question = msg[3:].strip()
 
@@ -244,7 +250,6 @@ def handle_message(data):
             ai_text = ask_ai(ai_question)
 
         ai_message = build_user_message("AI助手", ai_text, "ai")
-
         save_message(
             room_name,
             ai_message["sender"],
@@ -253,7 +258,6 @@ def handle_message(data):
             ai_message["time"],
             now_full_time()
         )
-
         socketio.emit("message", ai_message, to=room_name)
 
 
@@ -279,7 +283,6 @@ def handle_disconnect():
         leave_message["time"],
         now_full_time()
     )
-
     socketio.emit("message", leave_message, to=room_name)
     broadcast_user_list(room_name)
 
@@ -288,4 +291,5 @@ def handle_disconnect():
 
 if __name__ == "__main__":
     init_database()
-    socketio.run(app, host="0.0.0.0", port=5000)
+    port = int(os.environ.get("PORT", 10000))
+    socketio.run(app, host="0.0.0.0", port=port)
