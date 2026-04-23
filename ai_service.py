@@ -1,6 +1,7 @@
+import os
 import requests
 
-API_KEY = "sk-890a7d03d3034aef8e13566b276e5316"
+API_KEY = os.environ.get("DEEPSEEK_API_KEY", "")
 
 
 def ask_ai(message: str) -> str:
@@ -27,6 +28,9 @@ def ask_ai(message: str) -> str:
     }
 
     try:
+        if not API_KEY:
+            return "AI暂时不可用：未配置 DEEPSEEK_API_KEY"
+
         response = requests.post(url, headers=headers, json=data, timeout=60)
         response.raise_for_status()
         result = response.json()
