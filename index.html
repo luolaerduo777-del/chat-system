@@ -420,24 +420,55 @@ body.dark .topbar {
             align-items: center;
         }
 
-        .ai-switch {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            padding: 10px 12px;
-            border: 1px solid var(--border);
-            border-radius: 999px;
-            background: var(--card);
-            font-weight: 800;
-            color: var(--muted);
-            cursor: pointer;
-            white-space: nowrap;
-            user-select: none;
-        }
+        .ai-toggle-switch {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    user-select: none;
+    white-space: nowrap;
+    font-weight: 900;
+    color: var(--muted);
+}
 
-        .ai-switch input {
-            accent-color: var(--primary);
-        }
+.ai-toggle-switch input {
+    display: none;
+}
+
+.switch-slider {
+    width: 50px;
+    height: 28px;
+    border-radius: 999px;
+    background: #cbd5e1;
+    position: relative;
+    transition: background 0.25s ease, box-shadow 0.25s ease;
+}
+
+.switch-slider::before {
+    content: "";
+    position: absolute;
+    width: 22px;
+    height: 22px;
+    left: 3px;
+    top: 3px;
+    border-radius: 50%;
+    background: white;
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.25);
+    transition: transform 0.25s ease;
+}
+
+.ai-toggle-switch input:checked + .switch-slider {
+    background: linear-gradient(135deg, #10b981, #22c55e);
+    box-shadow: 0 0 18px rgba(16, 185, 129, 0.35);
+}
+
+.ai-toggle-switch input:checked + .switch-slider::before {
+    transform: translateX(22px);
+}
+
+.switch-text {
+    font-size: 14px;
+}
 
         .input-row input[type="text"] {
             flex: 1;
@@ -661,10 +692,11 @@ body.theme-changing .chat-panel {
 
                 <div class="input-area">
                     <div class="input-row">
-                        <label class="ai-switch">
-                            <input type="checkbox" id="aiToggle">
-                            AI
-                        </label>
+                        <label class="ai-toggle-switch">
+    <input type="checkbox" id="aiToggle">
+    <span class="switch-slider"></span>
+    <span class="switch-text">AI</span>
+</label>
                         <input id="message" type="text" placeholder="输入消息；开启AI后可用 @ai 提问" />
                         <button class="send-btn" onclick="sendMessage()">发送</button>
                     </div>

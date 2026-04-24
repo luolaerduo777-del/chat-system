@@ -222,6 +222,7 @@ def handle_message(data):
     if not room_name or not msg:
         return
 
+    # 用户消息
     user_message = build_user_message(username, msg, "user")
     save_message(
         room_name,
@@ -233,14 +234,49 @@ def handle_message(data):
     )
     socketio.emit("message", user_message, to=room_name)
 
+    # ================= AI逻辑 =================
     if ai_enabled and msg.lower().startswith("@ai"):
         ai_question = msg[3:].strip()
 
         if not ai_question:
-            ai_text = "你可以这样问我：@ai 什么是API？"
+            ai_text = "你可以这样用我：@ai 什么是API？ / @ai 总结 / @ai 笔记 / @ai 老师 解释一下WebSocket"
         else:
-            ai_text = ask_ai(ai_question)
+            mode = "default"
 
+            # 获取上下文
+            recent_messages = get_recent_messages(room_name, limit=30)
+            context_lines = []
+
+            for item in recent_messages:
+                if item.get("type") != "system":
+                    context_lines.append(f"{item['sender']}: {item['text']}")
+
+            context = "\n".join(context_lines)
+
+            # 模式判断
+            if ai_question.startswith("总结"):
+                mode = "summary"
+                ai_question = "请总结这个房间最近的聊天内容。"
+
+            elif ai_question.startswith("笔记"):
+                mode = "notes"
+                ai_question = "请生成学习笔记。"
+
+            elif ai_question.startswith("老师"):
+                mode = "teacher"
+                ai_question = ai_question.replace("老师", "", 1).strip()
+
+            elif ai_question.startswith("学长"):
+                mode = "senior"
+                ai_question = ai_question.replace("学长", "", 1).strip()
+
+            elif ai_question.startswith("吐槽"):
+                mode = "funny"
+                ai_question = ai_question.replace("吐槽", "", 1).strip()
+
+            ai_text = ask_ai(ai_question, mode=mode, context=context)
+
+        # AI回复
         ai_message = build_user_message("AI助手", ai_text, "ai")
         save_message(
             room_name,
@@ -251,7 +287,6 @@ def handle_message(data):
             now_full_time()
         )
         socketio.emit("message", ai_message, to=room_name)
-
 
 @socketio.on("disconnect")
 def handle_disconnect():
