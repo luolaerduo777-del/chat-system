@@ -484,7 +484,70 @@
 
             const text = document.createElement("div");
             text.className = "message-text";
-            text.innerText = message.text || "";
+            function typeWriter(element, text, speed = 25) {
+    let i = 0;
+    element.innerText = "";
+
+    function typing() {
+        if (i < text.length) {
+            element.innerText += text.charAt(i);
+            i++;
+            setTimeout(typing, speed);
+        }
+    }
+
+    typing();
+}
+
+function appendMessage(message) {
+    const messages = document.getElementById("messages");
+    const row = document.createElement("li");
+
+    let rowClass = "other";
+    if (message.type === "system") {
+        rowClass = "system";
+    } else if (message.type === "ai") {
+        rowClass = "ai";
+    } else if (message.sender === currentUsername) {
+        rowClass = "self";
+    }
+
+    row.className = "message-row " + rowClass;
+
+    const bubble = document.createElement("div");
+    bubble.className = "message-bubble";
+
+    const meta = document.createElement("div");
+    meta.className = "message-meta";
+
+    const sender = document.createElement("div");
+    sender.className = "message-sender";
+    sender.innerText = message.sender || "未知用户";
+
+    const time = document.createElement("div");
+    time.className = "message-time";
+    time.innerText = message.time || "";
+
+    const text = document.createElement("div");
+    text.className = "message-text";
+
+    meta.appendChild(sender);
+    meta.appendChild(time);
+    bubble.appendChild(meta);
+    bubble.appendChild(text);
+    row.appendChild(bubble);
+    messages.appendChild(row);
+
+    // 👇 核心：AI打字效果
+    if (message.type === "ai") {
+        typeWriter(text, message.text || "", 25);
+    } else {
+        text.innerText = message.text || "";
+    }
+
+    const chatArea = document.getElementById("chatArea");
+    chatArea.scrollTop = chatArea.scrollHeight;
+}
 
             meta.appendChild(sender);
             meta.appendChild(time);
