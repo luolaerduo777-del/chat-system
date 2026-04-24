@@ -1,150 +1,32 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <title>聊天室</title>
+</head>
+<body>
+
+<h2>聊天室已恢复 ✅</h2>
+
+<div id="messages"></div>
+
+<input id="input" placeholder="输入消息">
+<button onclick="send()">发送</button>
+
 <script>
-const socket = io();
+const ws = new WebSocket("wss://" + location.host + "/ws/chat");
 
-let currentRoom = "";
-let currentUsername = "";
-let hasJoined = false;
+ws.onmessage = (e) => {
+    const div = document.createElement("div");
+    div.innerText = e.data;
+    document.getElementById("messages").appendChild(div);
+};
 
-const streamingAIMap = {};
-async function loadMe() {
-    const res = await fetch("/api/me");
-    const data = await res.json();
-
-    if (!data.ok) {
-        location.href = "/login";
-        return;
-    }
-
-    currentUsername = data.username;
+function send() {
+    const val = document.getElementById("input").value;
+    ws.send(val);
 }
-
-/* ========= AI流式 ========= */
-function appendStreamingAIStart(message) {
-    const messages = document.getElementById("messages");
-
-    const row = document.createElement("li");
-    row.className = "message-row ai";
-
-    const avatar = document.createElement("div");
-    avatar.className = "msg-avatar";
-    avatar.innerText = "AI";
-
-    const bubble = document.createElement("div");
-    bubble.className = "message-bubble";
-
-    const meta = document.createElement("div");
-    meta.className = "message-meta";
-
-    const sender = document.createElement("div");
-    sender.className = "message-sender";
-    sender.innerText = message.sender;
-
-    const time = document.createElement("div");
-    time.className = "message-time";
-    time.innerText = message.time;
-
-    const text = document.createElement("div");
-    text.className = "message-text";
-
-    meta.appendChild(sender);
-    meta.appendChild(time);
-    bubble.appendChild(meta);
-    bubble.appendChild(text);
-
-    row.appendChild(avatar);
-    row.appendChild(bubble);
-    messages.appendChild(row);
-
-    streamingAIMap[message.id] = text;
-}
-
-function appendStreamingAIChunk(data) {
-    const el = streamingAIMap[data.id];
-    if (!el) return;
-
-    el.innerText += data.text;
-    scrollBottom();
-}
-
-function finishStreamingAI(data) {
-    delete streamingAIMap[data.id];
-}
-
-/* ========= 普通消息 ========= */
-function appendMessage(message) {
-    const messages = document.getElementById("messages");
-
-    const row = document.createElement("li");
-    row.className = "message-row";
-
-    if (message.sender === currentUsername) {
-        row.classList.add("self");
-    }
-
-    const avatar = document.createElement("div");
-    avatar.className = "msg-avatar";
-    avatar.innerText = message.sender[0].toUpperCase();
-
-    const bubble = document.createElement("div");
-    bubble.className = "message-bubble";
-
-    const meta = document.createElement("div");
-    meta.className = "message-meta";
-
-    const sender = document.createElement("div");
-    sender.className = "message-sender";
-    sender.innerText = message.sender;
-
-    const time = document.createElement("div");
-    time.className = "message-time";
-    time.innerText = message.time;
-
-    const text = document.createElement("div");
-    text.className = "message-text";
-    text.innerText = message.text;
-
-    meta.appendChild(sender);
-    meta.appendChild(time);
-    bubble.appendChild(meta);
-    bubble.appendChild(text);
-
-    row.appendChild(avatar);
-    row.appendChild(bubble);
-    messages.appendChild(row);
-
-    scrollBottom();
-}
-
-/* ========= socket监听 ========= */
-socket.on("message", (msg) => appendMessage(msg));
-
-socket.on("ai_start", (msg) => appendStreamingAIStart(msg));
-socket.on("ai_chunk", (data) => appendStreamingAIChunk(data));
-socket.on("ai_end", (data) => finishStreamingAI(data));
-
-/* ========= 发送 ========= */
-function sendMessage() {
-    if (!hasJoined) return alert("先进房间");
-
-    const input = document.getElementById("message");
-    const msg = input.value.trim();
-    if (!msg) return;
-
-    const aiEnabled = document.getElementById("aiToggle").checked;
-
-    socket.emit("message", {
-        room: currentRoom,
-        msg,
-        ai_enabled: aiEnabled
-    });
-
-    input.value = "";
-}
-
-/* ========= 工具 ========= */
-function scrollBottom() {
-    const chatArea = document.getElementById("chatArea");
-    chatArea.scrollTop = chatArea.scrollHeight;
-}
-loadMe();
 </script>
+
+</body>
+</html>
