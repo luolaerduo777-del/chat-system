@@ -5,85 +5,147 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>登录 - 校园聊天室</title>
     <style>
+        * {
+            box-sizing: border-box;
+        }
+
         body {
             margin: 0;
-            font-family: "Microsoft YaHei", Arial, sans-serif;
-            background: linear-gradient(135deg, #2563eb, #3b82f6);
             min-height: 100vh;
+            font-family: "Microsoft YaHei", Arial, sans-serif;
+            background:
+                radial-gradient(circle at top left, #60a5fa, transparent 35%),
+                linear-gradient(135deg, #0f172a, #1e293b 55%, #020617);
             display: flex;
-            justify-content: center;
             align-items: center;
+            justify-content: center;
+            color: #e5e7eb;
+            overflow: hidden;
         }
 
         .card {
-            width: 100%;
-            max-width: 420px;
-            background: white;
+            width: 420px;
+            max-width: calc(100% - 32px);
+            background: rgba(15, 23, 42, 0.82);
+            border: 1px solid rgba(148, 163, 184, 0.25);
+            backdrop-filter: blur(18px);
+            border-radius: 24px;
+            padding: 34px;
+            box-shadow: 0 24px 80px rgba(0, 0, 0, 0.38);
+            animation: fadeUp 0.45s ease;
+        }
+
+        @keyframes fadeUp {
+            from {
+                opacity: 0;
+                transform: translateY(18px) scale(0.98);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        .logo {
+            width: 54px;
+            height: 54px;
             border-radius: 18px;
-            padding: 32px;
-            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.15);
+            background: linear-gradient(135deg, #2563eb, #60a5fa);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 900;
+            font-size: 22px;
+            margin-bottom: 18px;
+            box-shadow: 0 12px 30px rgba(37, 99, 235, 0.35);
         }
 
         h1 {
-            margin: 0 0 10px;
-            font-size: 28px;
-            color: #111827;
+            margin: 0;
+            font-size: 30px;
         }
 
         p {
-            margin: 0 0 24px;
-            color: #6b7280;
+            margin: 8px 0 26px;
+            color: #94a3b8;
+            font-size: 14px;
         }
 
         input {
             width: 100%;
-            padding: 14px 16px;
+            padding: 15px 16px;
             margin-bottom: 14px;
-            border: 1px solid #d1d5db;
-            border-radius: 10px;
+            border: 1px solid rgba(148, 163, 184, 0.32);
+            border-radius: 14px;
+            background: rgba(15, 23, 42, 0.72);
+            color: #e5e7eb;
+            outline: none;
             font-size: 14px;
-            box-sizing: border-box;
+            transition: 0.22s ease;
+        }
+
+        input::placeholder {
+            color: #64748b;
+        }
+
+        input:focus {
+            border-color: #60a5fa;
+            box-shadow: 0 0 0 4px rgba(96, 165, 250, 0.16);
         }
 
         button {
             width: 100%;
             border: none;
-            background: #2563eb;
+            background: linear-gradient(135deg, #2563eb, #3b82f6);
             color: white;
-            padding: 14px 16px;
-            border-radius: 10px;
+            padding: 15px;
+            border-radius: 14px;
             font-size: 15px;
-            font-weight: 700;
+            font-weight: 900;
             cursor: pointer;
+            transition: 0.2s ease;
+            margin-top: 4px;
         }
 
         button:hover {
-            background: #1d4ed8;
+            transform: translateY(-2px);
+            box-shadow: 0 14px 32px rgba(37, 99, 235, 0.38);
+        }
+
+        button:active {
+            transform: scale(0.97);
         }
 
         .msg {
             min-height: 22px;
             margin-top: 14px;
-            color: #dc2626;
+            color: #f87171;
             font-size: 14px;
         }
 
         .link {
-            margin-top: 18px;
+            margin-top: 20px;
             text-align: center;
             font-size: 14px;
+            color: #94a3b8;
         }
 
         .link a {
-            color: #2563eb;
+            color: #60a5fa;
+            font-weight: 800;
             text-decoration: none;
+        }
+
+        .link a:hover {
+            text-decoration: underline;
         }
     </style>
 </head>
 <body>
     <div class="card">
-        <h1>登录</h1>
-        <p>欢迎回到校园聊天室</p>
+        <div class="logo">聊</div>
+        <h1>欢迎回来</h1>
+        <p>登录校园聊天室，继续你的实时对话。</p>
 
         <input id="username" placeholder="用户名" />
         <input id="password" type="password" placeholder="密码" />
@@ -92,7 +154,7 @@
         <div class="msg" id="msg"></div>
 
         <div class="link">
-            还没有账号？<a href="/register">去注册</a>
+            还没有账号？<a href="/register">立即注册</a>
         </div>
     </div>
 
