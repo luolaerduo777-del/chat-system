@@ -1,4 +1,5 @@
 import os
+import uuid
 from datetime import datetime
 from pathlib import Path
 
@@ -14,7 +15,7 @@ from database import (
     save_message,
     get_recent_messages,
 )
-from ai_service import ask_ai
+from ai_service import stream_ai
 
 BASE_DIR = Path(__file__).resolve().parent
 
@@ -24,15 +25,14 @@ socketio = SocketIO(app, cors_allowed_origins="*")
 
 room_users = {}
 user_sessions = {}
-
 DEFAULT_ROOMS = []
 
 
-def now_display_time() -> str:
+def now_display_time():
     return datetime.now().strftime("%H:%M")
 
 
-def now_full_time() -> str:
+def now_full_time():
     return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
 
@@ -40,11 +40,11 @@ def current_username():
     return session.get("username")
 
 
-def is_logged_in() -> bool:
+def is_logged_in():
     return "username" in session
 
 
-def build_system_message(text: str):
+def build_system_message(text):
     return {
         "type": "system",
         "sender": "系统",
@@ -53,7 +53,7 @@ def build_system_message(text: str):
     }
 
 
-def build_user_message(sender: str, text: str, msg_type: str = "user"):
+def build_user_message(sender, text, msg_type="user"):
     return {
         "type": msg_type,
         "sender": sender,
@@ -62,7 +62,7 @@ def build_user_message(sender: str, text: str, msg_type: str = "user"):
     }
 
 
-def broadcast_user_list(room_name: str):
+def broadcast_user_list(room_name):
     users = room_users.get(room_name, [])
     socketio.emit("user_list", users, to=room_name)
 
@@ -130,6 +130,7 @@ def api_logout():
 def api_me():
     if not is_logged_in():
         return jsonify({"ok": False, "message": "未登录"}), 401
+
     return jsonify({"ok": True, "username": session["username"]})
 
 
@@ -222,7 +223,6 @@ def handle_message(data):
     if not room_name or not msg:
         return
 
-    # 用户消息
     user_message = build_user_message(username, msg, "user")
     save_message(
         room_name,
@@ -234,59 +234,83 @@ def handle_message(data):
     )
     socketio.emit("message", user_message, to=room_name)
 
-    # ================= AI逻辑 =================
-    if ai_enabled and msg.lower().startswith("@ai"):
-        ai_question = msg[3:].strip()
+    if not (ai_enabled and msg.lower().startswith("@ai")):
+        return
 
-        if not ai_question:
-            ai_text = "你可以这样用我：@ai 什么是API？ / @ai 总结 / @ai 笔记 / @ai 老师 解释一下WebSocket"
-        else:
-            mode = "default"
+    ai_question = msg[3:].strip()
 
-            # 获取上下文
-            recent_messages = get_recent_messages(room_name, limit=30)
-            context_lines = []
+    if not ai_question:
+        ai_question = "请告诉用户：你可以这样用我：@ai 什么是API？ / @ai 总结 / @ai 笔记 / @ai 老师 解释一下WebSocket"
 
-            for item in recent_messages:
-                if item.get("type") != "system":
-                    context_lines.append(f"{item['sender']}: {item['text']}")
+    mode = "default"
 
-            context = "\n".join(context_lines)
+    recent_messages = get_recent_messages(room_name, limit=30)
+    context_lines = []
 
-            # 模式判断
-            if ai_question.startswith("总结"):
-                mode = "summary"
-                ai_question = "请总结这个房间最近的聊天内容。"
+    for item in recent_messages:
+        if item.get("type") != "system":
+            context_lines.append(f"{item['sender']}: {item['text']}")
 
-            elif ai_question.startswith("笔记"):
-                mode = "notes"
-                ai_question = "请生成学习笔记。"
+    context = "\n".join(context_lines)
 
-            elif ai_question.startswith("老师"):
-                mode = "teacher"
-                ai_question = ai_question.replace("老师", "", 1).strip()
+    if ai_question.startswith("总结"):
+        mode = "summary"
+        ai_question = "请总结这个房间最近的聊天内容。"
 
-            elif ai_question.startswith("学长"):
-                mode = "senior"
-                ai_question = ai_question.replace("学长", "", 1).strip()
+    elif ai_question.startswith("笔记"):
+        mode = "notes"
+        ai_question = "请根据这个房间最近的聊天内容生成学习笔记。"
 
-            elif ai_question.startswith("吐槽"):
-                mode = "funny"
-                ai_question = ai_question.replace("吐槽", "", 1).strip()
+    elif ai_question.startswith("老师"):
+        mode = "teacher"
+        ai_question = ai_question.replace("老师", "", 1).strip()
 
-            ai_text = ask_ai(ai_question, mode=mode, context=context)
+    elif ai_question.startswith("学长"):
+        mode = "senior"
+        ai_question = ai_question.replace("学长", "", 1).strip()
 
-        # AI回复
-        ai_message = build_user_message("AI助手", ai_text, "ai")
-        save_message(
-            room_name,
-            ai_message["sender"],
-            ai_message["text"],
-            ai_message["type"],
-            ai_message["time"],
-            now_full_time()
-        )
-        socketio.emit("message", ai_message, to=room_name)
+    elif ai_question.startswith("吐槽"):
+        mode = "funny"
+        ai_question = ai_question.replace("吐槽", "", 1).strip()
+
+    ai_id = str(uuid.uuid4())
+    ai_time = now_display_time()
+
+    socketio.emit("ai_start", {
+        "id": ai_id,
+        "sender": "AI助手",
+        "type": "ai",
+        "time": ai_time
+    }, to=room_name)
+
+    full_text = ""
+
+    for chunk in stream_ai(ai_question, mode=mode, context=context):
+        full_text += chunk
+
+        socketio.emit("ai_chunk", {
+            "id": ai_id,
+            "text": chunk
+        }, to=room_name)
+
+        socketio.sleep(0)
+
+    if not full_text:
+        full_text = "AI暂时没有返回内容。"
+
+    save_message(
+        room_name,
+        "AI助手",
+        full_text,
+        "ai",
+        ai_time,
+        now_full_time()
+    )
+
+    socketio.emit("ai_end", {
+        "id": ai_id
+    }, to=room_name)
+
 
 @socketio.on("disconnect")
 def handle_disconnect():
