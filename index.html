@@ -55,15 +55,21 @@
         }
 
         .topbar {
-            height: 72px;
-            background: linear-gradient(135deg, var(--primary), #60a5fa);
-            color: white;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 0 28px;
-            box-shadow: 0 8px 24px var(--shadow);
-        }
+    height: 72px;
+    background: linear-gradient(135deg, var(--primary), #60a5fa);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 28px;
+    box-shadow: 0 8px 24px var(--shadow);
+    transition: background 0.35s ease, box-shadow 0.35s ease;
+}
+
+/* 👇 新增：深色模式 */
+body.dark .topbar {
+    background: linear-gradient(135deg, #020617, #1e293b);
+}
 
         .brand {
             display: flex;
@@ -530,6 +536,76 @@
                 padding: 0 16px;
             }
         }
+* {
+    transition:
+        background-color 0.25s ease,
+        color 0.25s ease,
+        border-color 0.25s ease,
+        box-shadow 0.25s ease;
+}
+
+.panel,
+.chat-panel,
+.message-bubble,
+.room-item,
+.user-item {
+    animation: fadeUp 0.25s ease;
+}
+
+.message-row {
+    animation: messageIn 0.22s ease;
+}
+
+@keyframes fadeUp {
+    from {
+        opacity: 0;
+        transform: translateY(8px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes messageIn {
+    from {
+        opacity: 0;
+        transform: translateY(8px) scale(0.98);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+/* hover 动画 */
+.room-item,
+.send-btn,
+.top-btn,
+.join-box button {
+    transition:
+        transform 0.18s ease,
+        background-color 0.25s ease,
+        border-color 0.25s ease;
+}
+
+.room-item:hover,
+.send-btn:hover,
+.top-btn:hover,
+.join-box button:hover {
+    transform: translateY(-2px);
+}
+
+.send-btn:active,
+.top-btn:active,
+.join-box button:active {
+    transform: scale(0.96);
+}
+body.theme-changing .topbar,
+body.theme-changing .panel,
+body.theme-changing .chat-panel {
+    transition: all 0.3s ease;
+}
     </style>
 </head>
 <body>
@@ -894,12 +970,18 @@
             }
         });
 
-        function toggleTheme() {
-            document.body.classList.toggle("dark");
-            const isDark = document.body.classList.contains("dark");
-            localStorage.setItem(themeKey, isDark ? "dark" : "light");
-        }
+function toggleTheme() {
+    document.body.classList.add("theme-changing");
 
+    document.body.classList.toggle("dark");
+
+    const isDark = document.body.classList.contains("dark");
+    localStorage.setItem(themeKey, isDark ? "dark" : "light");
+
+    setTimeout(() => {
+        document.body.classList.remove("theme-changing");
+    }, 300);
+}
         function loadTheme() {
             const theme = localStorage.getItem(themeKey);
             if (theme === "dark") {
