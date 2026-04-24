@@ -1,32 +1,809 @@
 <!DOCTYPE html>
-<html lang="zh">
+<html lang="zh-CN">
 <head>
-    <meta charset="UTF-8">
-    <title>聊天室</title>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>校园聊天室</title>
+    <style>
+        * { box-sizing: border-box; transition: background-color .25s ease, color .25s ease, border-color .25s ease, box-shadow .25s ease; }
+
+        :root {
+            --bg: #f4f7fb;
+            --card: #ffffff;
+            --card-soft: #f8fafc;
+            --text: #0f172a;
+            --muted: #64748b;
+            --border: #e2e8f0;
+            --primary: #2563eb;
+            --primary-dark: #1d4ed8;
+            --bubble-self: #2563eb;
+            --bubble-other: #f1f5f9;
+            --bubble-ai: #ecfdf5;
+            --ai-border: #86efac;
+            --shadow: rgba(15, 23, 42, 0.08);
+        }
+
+        body.dark {
+            --bg: #0f172a;
+            --card: #111827;
+            --card-soft: #1e293b;
+            --text: #e5e7eb;
+            --muted: #94a3b8;
+            --border: #334155;
+            --primary: #3b82f6;
+            --primary-dark: #2563eb;
+            --bubble-other: #1e293b;
+            --bubble-ai: #064e3b;
+            --ai-border: #10b981;
+            --shadow: rgba(0, 0, 0, 0.35);
+        }
+
+        body {
+            margin: 0;
+            font-family: "Microsoft YaHei", Arial, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+        }
+
+        .app { min-height: 100vh; display: flex; flex-direction: column; }
+
+        .topbar {
+            height: 72px;
+            background: linear-gradient(135deg, var(--primary), #60a5fa);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 28px;
+            box-shadow: 0 8px 24px var(--shadow);
+        }
+
+        body.dark .topbar {
+            background: linear-gradient(135deg, #020617, #1e293b);
+        }
+
+        .brand h1 { margin: 0; font-size: 24px; }
+        .brand span { font-size: 13px; opacity: .9; }
+
+        .top-actions { display: flex; gap: 10px; }
+
+        .top-btn {
+            border: none;
+            padding: 10px 14px;
+            border-radius: 999px;
+            background: rgba(255,255,255,.18);
+            color: white;
+            cursor: pointer;
+            font-weight: 700;
+        }
+
+        .top-btn:hover { background: rgba(255,255,255,.28); transform: translateY(-2px); }
+
+        .layout {
+            flex: 1;
+            display: grid;
+            grid-template-columns: 260px 1fr 260px;
+            max-width: 1500px;
+            width: 100%;
+            margin: 0 auto;
+            padding: 22px;
+        }
+
+        .panel {
+            background: var(--card);
+            border: 1px solid var(--border);
+            box-shadow: 0 8px 28px var(--shadow);
+        }
+
+        .left-panel { border-radius: 18px 0 0 18px; overflow: hidden; }
+        .right-panel { border-radius: 0 18px 18px 0; overflow: hidden; }
+
+        .chat-panel {
+            background: var(--card);
+            border-top: 1px solid var(--border);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            min-height: calc(100vh - 116px);
+        }
+
+        .panel-title {
+            padding: 18px;
+            border-bottom: 1px solid var(--border);
+            font-weight: 800;
+            font-size: 16px;
+        }
+
+        .user-card, .join-box, .room-section {
+            padding: 16px 18px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .user-card { background: var(--card-soft); }
+
+        .user-row { display: flex; align-items: center; gap: 12px; }
+
+        .avatar, .msg-avatar, .small-avatar {
+            border-radius: 50%;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 900;
+            flex-shrink: 0;
+        }
+
+        .avatar {
+            width: 42px;
+            height: 42px;
+            background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+        }
+
+        .user-meta .name { font-weight: 800; }
+        .user-meta .desc { font-size: 12px; color: var(--muted); margin-top: 3px; }
+
+        .join-box input {
+            width: 100%;
+            border: 1px solid var(--border);
+            background: var(--card);
+            color: var(--text);
+            padding: 12px 13px;
+            border-radius: 12px;
+            outline: none;
+            font-size: 14px;
+        }
+
+        .join-box button {
+            width: 100%;
+            margin-top: 10px;
+            border: none;
+            background: var(--primary);
+            color: white;
+            padding: 12px;
+            border-radius: 12px;
+            cursor: pointer;
+            font-weight: 800;
+        }
+
+        .join-box button:hover { background: var(--primary-dark); transform: translateY(-2px); }
+
+        .section-label {
+            font-size: 13px;
+            color: var(--muted);
+            font-weight: 800;
+            margin-bottom: 12px;
+        }
+
+        .room-list, .user-list, .message-list {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+        }
+
+        .room-item {
+            padding: 13px 14px;
+            border-radius: 14px;
+            border: 1px solid var(--border);
+            background: var(--card-soft);
+            margin-bottom: 10px;
+            cursor: pointer;
+            font-weight: 700;
+        }
+
+        .room-item:hover { transform: translateY(-2px); border-color: var(--primary); }
+        .room-item.active { background: var(--primary); color: white; border-color: var(--primary); }
+
+        .empty-tip {
+            color: var(--muted);
+            font-size: 13px;
+            line-height: 1.7;
+        }
+
+        .status {
+            padding: 14px 22px;
+            border-bottom: 1px solid var(--border);
+            background: var(--card-soft);
+            color: var(--muted);
+            font-size: 14px;
+        }
+
+        .status b { color: var(--primary); }
+
+        .chat-area {
+            flex: 1;
+            padding: 24px;
+            overflow-y: auto;
+            scroll-behavior: smooth;
+        }
+
+        .message-row {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 18px;
+            align-items: flex-end;
+            animation: messageIn .22s ease;
+        }
+
+        @keyframes messageIn {
+            from { opacity: 0; transform: translateY(8px) scale(.98); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        .message-row.self { justify-content: flex-end; }
+        .message-row.self .msg-avatar { order: 2; }
+
+        .msg-avatar {
+            width: 34px;
+            height: 34px;
+            font-size: 13px;
+            background: linear-gradient(135deg, #64748b, #94a3b8);
+        }
+
+        .message-row.self .msg-avatar { background: linear-gradient(135deg, #2563eb, #60a5fa); }
+        .message-row.ai .msg-avatar { background: linear-gradient(135deg, #10b981, #22c55e); }
+        .message-row.system .msg-avatar { background: linear-gradient(135deg, #6366f1, #818cf8); }
+
+        .message-bubble {
+            max-width: 72%;
+            padding: 12px 14px;
+            border-radius: 18px;
+            line-height: 1.65;
+            word-break: break-word;
+            box-shadow: 0 6px 18px var(--shadow);
+            background: var(--bubble-other);
+            color: var(--text);
+        }
+
+        .message-row.self .message-bubble {
+            background: var(--bubble-self);
+            color: white;
+            border-bottom-right-radius: 6px;
+        }
+
+        .message-row.ai .message-bubble {
+            background: var(--bubble-ai);
+            color: #065f46;
+            border: 1px solid var(--ai-border);
+            border-bottom-left-radius: 6px;
+        }
+
+        body.dark .message-row.ai .message-bubble { color: #d1fae5; }
+
+        .message-row.system .message-bubble {
+            background: #eef2ff;
+            color: #4338ca;
+            border-bottom-left-radius: 6px;
+        }
+
+        body.dark .message-row.system .message-bubble {
+            background: #1e1b4b;
+            color: #c4b5fd;
+        }
+
+        .message-meta {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            margin-bottom: 5px;
+            font-size: 12px;
+            opacity: .9;
+        }
+
+        .message-sender { font-weight: 900; }
+        .message-time { opacity: .75; }
+        .message-text { font-size: 14px; white-space: pre-wrap; }
+
+        .input-area {
+            padding: 16px 22px;
+            border-top: 1px solid var(--border);
+            background: var(--card-soft);
+        }
+
+        .input-row {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+
+        .ai-toggle-switch {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            cursor: pointer;
+            user-select: none;
+            font-weight: 900;
+            color: var(--muted);
+        }
+
+        .ai-toggle-switch input { display: none; }
+
+        .switch-slider {
+            width: 50px;
+            height: 28px;
+            border-radius: 999px;
+            background: #cbd5e1;
+            position: relative;
+        }
+
+        .switch-slider::before {
+            content: "";
+            position: absolute;
+            width: 22px;
+            height: 22px;
+            left: 3px;
+            top: 3px;
+            border-radius: 50%;
+            background: white;
+            box-shadow: 0 3px 10px rgba(0,0,0,.25);
+            transition: transform .25s ease;
+        }
+
+        .ai-toggle-switch input:checked + .switch-slider {
+            background: linear-gradient(135deg, #10b981, #22c55e);
+            box-shadow: 0 0 18px rgba(16,185,129,.35);
+        }
+
+        .ai-toggle-switch input:checked + .switch-slider::before {
+            transform: translateX(22px);
+        }
+
+        .input-row input[type="text"] {
+            flex: 1;
+            border: 1px solid var(--border);
+            background: var(--card);
+            color: var(--text);
+            padding: 14px 15px;
+            border-radius: 16px;
+            outline: none;
+            font-size: 14px;
+        }
+
+        .send-btn {
+            border: none;
+            background: var(--primary);
+            color: white;
+            padding: 14px 20px;
+            border-radius: 16px;
+            cursor: pointer;
+            font-weight: 900;
+        }
+
+        .send-btn:hover { background: var(--primary-dark); transform: translateY(-2px); }
+
+        .tip { margin-top: 10px; font-size: 12px; color: var(--muted); }
+
+        .online-count {
+            font-size: 13px;
+            color: var(--muted);
+            margin-top: 4px;
+        }
+
+        .user-list { padding: 14px; }
+
+        .user-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px;
+            background: var(--card-soft);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            margin-bottom: 10px;
+        }
+
+        .user-item.self { border-color: var(--primary); }
+
+        .small-avatar {
+            width: 30px;
+            height: 30px;
+            font-size: 12px;
+            background: linear-gradient(135deg, #2563eb, #8b5cf6);
+        }
+
+        @media (max-width: 1050px) {
+            .layout { grid-template-columns: 1fr; padding: 12px; }
+            .left-panel, .right-panel, .chat-panel {
+                border-radius: 18px;
+                margin-bottom: 12px;
+            }
+            .chat-panel { min-height: 640px; }
+            .message-bubble { max-width: 86%; }
+        }
+    </style>
 </head>
+
 <body>
+<div class="app">
+    <div class="topbar">
+        <div class="brand">
+            <h1>校园聊天室</h1>
+            <span>实时聊天 · AI助手 · 流式输出 · 多房间</span>
+        </div>
+        <div class="top-actions">
+            <button class="top-btn" onclick="toggleTheme()">深色模式</button>
+            <button class="top-btn" onclick="logout()">退出登录</button>
+        </div>
+    </div>
 
-<h2>聊天室已恢复 ✅</h2>
+    <div class="layout">
+        <aside class="panel left-panel">
+            <div class="panel-title">房间</div>
 
-<div id="messages"></div>
+            <div class="user-card">
+                <div class="user-row">
+                    <div class="avatar" id="myAvatar">U</div>
+                    <div class="user-meta">
+                        <div class="name" id="usernameText">未登录</div>
+                        <div class="desc">当前账号</div>
+                    </div>
+                </div>
+            </div>
 
-<input id="input" placeholder="输入消息">
-<button onclick="send()">发送</button>
+            <div class="join-box">
+                <input id="room" placeholder="输入房间名，例如 cs / ai / dorm" />
+                <button onclick="joinRoom()">进入房间</button>
+            </div>
+
+            <div class="room-section">
+                <div class="section-label">最近使用</div>
+                <ul class="room-list" id="recentRoomList"></ul>
+                <div class="empty-tip" id="recentEmptyTip">
+                    还没有最近使用的房间。<br />
+                    先输入一个房间名进入吧。
+                </div>
+            </div>
+        </aside>
+
+        <main class="chat-panel">
+            <div class="status" id="statusBar">当前状态：未进入房间</div>
+
+            <div class="chat-area" id="chatArea">
+                <ul id="messages" class="message-list"></ul>
+            </div>
+
+            <div class="input-area">
+                <div class="input-row">
+                    <label class="ai-toggle-switch">
+                        <input type="checkbox" id="aiToggle">
+                        <span class="switch-slider"></span>
+                        <span>AI</span>
+                    </label>
+
+                    <input id="message" type="text" placeholder="输入消息；开启AI后可用 @ai 提问" />
+                    <button class="send-btn" onclick="sendMessage()">发送</button>
+                </div>
+
+                <div class="tip">
+                    AI开启后，输入 <b>@ai 问题</b> 才会触发AI。支持：@ai 总结 / @ai 笔记 / @ai 老师 / @ai 学长 / @ai 吐槽
+                </div>
+            </div>
+        </main>
+
+        <aside class="panel right-panel">
+            <div class="panel-title">
+                在线用户
+                <div class="online-count" id="onlineCount">当前 0 人</div>
+            </div>
+            <ul class="user-list" id="userList"></ul>
+        </aside>
+    </div>
+</div>
+
+<script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
 
 <script>
-const ws = new WebSocket("wss://" + location.host + "/ws/chat");
+const socket = io();
 
-ws.onmessage = (e) => {
-    const div = document.createElement("div");
-    div.innerText = e.data;
-    document.getElementById("messages").appendChild(div);
-};
+let currentRoom = "";
+let currentUsername = "";
+let hasJoined = false;
 
-function send() {
-    const val = document.getElementById("input").value;
-    ws.send(val);
+const recentRoomsKey = "recent_rooms_v3";
+const themeKey = "chat_theme_v3";
+const streamingAIMap = {};
+
+function getInitial(name) {
+    return (name || "?").trim().charAt(0).toUpperCase();
 }
-</script>
 
+async function loadMe() {
+    const res = await fetch("/api/me");
+    const data = await res.json();
+
+    if (!data.ok) {
+        location.href = "/login";
+        return;
+    }
+
+    currentUsername = data.username;
+    document.getElementById("usernameText").innerText = currentUsername;
+    document.getElementById("myAvatar").innerText = getInitial(currentUsername);
+}
+
+function getRecentRooms() {
+    const data = localStorage.getItem(recentRoomsKey);
+    return data ? JSON.parse(data) : [];
+}
+
+function saveRecentRooms(rooms) {
+    localStorage.setItem(recentRoomsKey, JSON.stringify(rooms));
+}
+
+function addRecentRoom(roomName) {
+    let rooms = getRecentRooms().filter(room => room !== roomName);
+    rooms.unshift(roomName);
+    rooms = rooms.slice(0, 8);
+    saveRecentRooms(rooms);
+    renderRecentRooms();
+}
+
+function renderRecentRooms() {
+    const recentRoomList = document.getElementById("recentRoomList");
+    const emptyTip = document.getElementById("recentEmptyTip");
+    const rooms = getRecentRooms();
+
+    recentRoomList.innerHTML = "";
+
+    if (rooms.length === 0) {
+        emptyTip.style.display = "block";
+        return;
+    }
+
+    emptyTip.style.display = "none";
+
+    rooms.forEach(roomName => {
+        const li = document.createElement("li");
+        li.className = "room-item";
+        li.dataset.room = roomName;
+        li.innerText = roomName;
+        li.onclick = () => selectRoom(roomName);
+
+        if (roomName === currentRoom) {
+            li.classList.add("active");
+        }
+
+        recentRoomList.appendChild(li);
+    });
+}
+
+function updateStatus() {
+    const statusBar = document.getElementById("statusBar");
+
+    if (!hasJoined) {
+        statusBar.innerHTML = "当前状态：未进入房间";
+        return;
+    }
+
+    statusBar.innerHTML = `当前状态：已进入房间 <b>【${currentRoom}】</b>；当前用户：<b>${currentUsername}</b>`;
+}
+
+function appendMessage(message) {
+    const messages = document.getElementById("messages");
+    const row = document.createElement("li");
+
+    let rowClass = "other";
+
+    if (message.type === "system") {
+        rowClass = "system";
+    } else if (message.type === "ai") {
+        rowClass = "ai";
+    } else if (message.sender === currentUsername) {
+        rowClass = "self";
+    }
+
+    row.className = "message-row " + rowClass;
+
+    const avatar = document.createElement("div");
+    avatar.className = "msg-avatar";
+    avatar.innerText = message.type === "ai" ? "AI" : message.type === "system" ? "S" : getInitial(message.sender);
+
+    const bubble = document.createElement("div");
+    bubble.className = "message-bubble";
+
+    const meta = document.createElement("div");
+    meta.className = "message-meta";
+
+    const sender = document.createElement("div");
+    sender.className = "message-sender";
+    sender.innerText = message.sender || "未知用户";
+
+    const time = document.createElement("div");
+    time.className = "message-time";
+    time.innerText = message.time || "";
+
+    const text = document.createElement("div");
+    text.className = "message-text";
+    text.innerText = message.text || "";
+
+    meta.appendChild(sender);
+    meta.appendChild(time);
+    bubble.appendChild(meta);
+    bubble.appendChild(text);
+
+    row.appendChild(avatar);
+    row.appendChild(bubble);
+    messages.appendChild(row);
+
+    scrollBottom();
+}
+
+function appendStreamingAIStart(message) {
+    const messages = document.getElementById("messages");
+
+    const row = document.createElement("li");
+    row.className = "message-row ai";
+
+    const avatar = document.createElement("div");
+    avatar.className = "msg-avatar";
+    avatar.innerText = "AI";
+
+    const bubble = document.createElement("div");
+    bubble.className = "message-bubble";
+
+    const meta = document.createElement("div");
+    meta.className = "message-meta";
+
+    const sender = document.createElement("div");
+    sender.className = "message-sender";
+    sender.innerText = message.sender || "AI助手";
+
+    const time = document.createElement("div");
+    time.className = "message-time";
+    time.innerText = message.time || "";
+
+    const text = document.createElement("div");
+    text.className = "message-text";
+    text.innerText = "";
+
+    meta.appendChild(sender);
+    meta.appendChild(time);
+    bubble.appendChild(meta);
+    bubble.appendChild(text);
+
+    row.appendChild(avatar);
+    row.appendChild(bubble);
+    messages.appendChild(row);
+
+    streamingAIMap[message.id] = text;
+    scrollBottom();
+}
+
+function appendStreamingAIChunk(data) {
+    const el = streamingAIMap[data.id];
+    if (!el) return;
+
+    el.innerText += data.text || "";
+    scrollBottom();
+}
+
+function finishStreamingAI(data) {
+    delete streamingAIMap[data.id];
+}
+
+function joinRoom() {
+    const roomInput = document.getElementById("room");
+    currentRoom = roomInput.value.trim();
+
+    if (!currentUsername || !currentRoom) {
+        alert("请先登录并输入房间名");
+        return;
+    }
+
+    document.getElementById("messages").innerHTML = "";
+    document.getElementById("userList").innerHTML = "";
+    document.getElementById("onlineCount").innerText = "当前 0 人";
+
+    socket.emit("join", { room: currentRoom });
+
+    hasJoined = true;
+    addRecentRoom(currentRoom);
+    renderRecentRooms();
+    updateStatus();
+}
+
+function selectRoom(roomName) {
+    document.getElementById("room").value = roomName;
+    joinRoom();
+}
+
+function sendMessage() {
+    if (!hasJoined) {
+        alert("请先进入房间");
+        return;
+    }
+
+    const input = document.getElementById("message");
+    const msg = input.value.trim();
+
+    if (!msg) return;
+
+    const aiEnabled = document.getElementById("aiToggle").checked;
+
+    socket.emit("message", {
+        room: currentRoom,
+        msg: msg,
+        ai_enabled: aiEnabled
+    });
+
+    input.value = "";
+}
+
+function renderUserList(users) {
+    const userList = document.getElementById("userList");
+    const onlineCount = document.getElementById("onlineCount");
+
+    userList.innerHTML = "";
+    onlineCount.innerText = `当前 ${users.length} 人`;
+
+    users.forEach(user => {
+        const li = document.createElement("li");
+        li.className = "user-item";
+
+        if (user === currentUsername) {
+            li.classList.add("self");
+        }
+
+        const avatar = document.createElement("div");
+        avatar.className = "small-avatar";
+        avatar.innerText = getInitial(user);
+
+        const name = document.createElement("div");
+        name.innerText = user === currentUsername ? `${user}（你）` : user;
+
+        li.appendChild(avatar);
+        li.appendChild(name);
+        userList.appendChild(li);
+    });
+}
+
+function scrollBottom() {
+    const chatArea = document.getElementById("chatArea");
+    chatArea.scrollTop = chatArea.scrollHeight;
+}
+
+async function logout() {
+    await fetch("/api/logout", { method: "POST" });
+    location.href = "/login";
+}
+
+function toggleTheme() {
+    document.body.classList.toggle("dark");
+    const isDark = document.body.classList.contains("dark");
+    localStorage.setItem(themeKey, isDark ? "dark" : "light");
+}
+
+function loadTheme() {
+    if (localStorage.getItem(themeKey) === "dark") {
+        document.body.classList.add("dark");
+    }
+}
+
+socket.on("history", messages => {
+    document.getElementById("messages").innerHTML = "";
+    messages.forEach(msg => appendMessage(msg));
+});
+
+socket.on("message", msg => appendMessage(msg));
+socket.on("ai_start", msg => appendStreamingAIStart(msg));
+socket.on("ai_chunk", data => appendStreamingAIChunk(data));
+socket.on("ai_end", data => finishStreamingAI(data));
+socket.on("user_list", users => renderUserList(users));
+socket.on("error_message", msg => alert(msg));
+
+document.getElementById("message").addEventListener("keydown", event => {
+    if (event.key === "Enter") {
+        sendMessage();
+    }
+});
+
+async function initPage() {
+    loadTheme();
+    await loadMe();
+    renderRecentRooms();
+    updateStatus();
+}
+
+initPage();
+</script>
 </body>
 </html>
