@@ -22,13 +22,10 @@ app = Flask(__name__, static_folder=None)
 app.secret_key = "chat-system-secret-key-change-me"
 socketio = SocketIO(app, cors_allowed_origins="*")
 
-# 房间在线用户：{"room_name": ["user1", "user2"]}
 room_users = {}
-
-# 当前连接：{"sid": {"username": "...", "room": "..."}}
 user_sessions = {}
 
-DEFAULT_ROOMS = ["math", "ai", "class-1", "dorm", "trade"]
+DEFAULT_ROOMS = []
 
 
 def now_display_time() -> str:
@@ -159,7 +156,6 @@ def handle_join(data):
 
     create_room_if_not_exists(room_name, now_full_time())
 
-    # 如果之前已经在别的房间，先退出旧房间
     if sid in user_sessions:
         old_username = user_sessions[sid]["username"]
         old_room = user_sessions[sid]["room"]
@@ -195,11 +191,9 @@ def handle_join(data):
         "room": room_name
     }
 
-    # 先发送历史消息
     history = get_recent_messages(room_name, limit=100)
     emit("history", history)
 
-    # 再广播进入房间消息
     join_message = build_system_message(f"{username} 进入了房间 {room_name}")
     save_message(
         room_name,
@@ -209,8 +203,8 @@ def handle_join(data):
         join_message["time"],
         now_full_time()
     )
-    socketio.emit("message", join_message, to=room_name)
 
+    socketio.emit("message", join_message, to=room_name)
     broadcast_user_list(room_name)
 
 
@@ -228,7 +222,6 @@ def handle_message(data):
     if not room_name or not msg:
         return
 
-    # 用户自己的消息先正常广播
     user_message = build_user_message(username, msg, "user")
     save_message(
         room_name,
@@ -240,7 +233,6 @@ def handle_message(data):
     )
     socketio.emit("message", user_message, to=room_name)
 
-    # AI开关打开 + @ai（大小写兼容）才触发
     if ai_enabled and msg.lower().startswith("@ai"):
         ai_question = msg[3:].strip()
 
@@ -283,6 +275,7 @@ def handle_disconnect():
         leave_message["time"],
         now_full_time()
     )
+
     socketio.emit("message", leave_message, to=room_name)
     broadcast_user_list(room_name)
 

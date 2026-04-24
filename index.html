@@ -9,124 +9,232 @@
             box-sizing: border-box;
         }
 
+        :root {
+            --bg: #f4f7fb;
+            --card: #ffffff;
+            --card-soft: #f8fafc;
+            --text: #0f172a;
+            --muted: #64748b;
+            --border: #e2e8f0;
+            --primary: #2563eb;
+            --primary-dark: #1d4ed8;
+            --bubble-self: #2563eb;
+            --bubble-other: #f1f5f9;
+            --bubble-ai: #ecfdf5;
+            --ai-border: #86efac;
+            --shadow: rgba(15, 23, 42, 0.08);
+        }
+
+        body.dark {
+            --bg: #0f172a;
+            --card: #111827;
+            --card-soft: #1e293b;
+            --text: #e5e7eb;
+            --muted: #94a3b8;
+            --border: #334155;
+            --primary: #3b82f6;
+            --primary-dark: #2563eb;
+            --bubble-self: #2563eb;
+            --bubble-other: #1e293b;
+            --bubble-ai: #064e3b;
+            --ai-border: #10b981;
+            --shadow: rgba(0, 0, 0, 0.35);
+        }
+
         body {
             margin: 0;
             font-family: "Microsoft YaHei", Arial, sans-serif;
-            background: #f3f6fb;
-            color: #1f2937;
+            background: var(--bg);
+            color: var(--text);
         }
 
-        .container {
-            width: 100%;
-            max-width: 1280px;
-            margin: 28px auto;
-            background: #ffffff;
-            border-radius: 18px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
-            overflow: hidden;
-        }
-
-        .header {
-            background: linear-gradient(135deg, #2563eb, #3b82f6);
-            color: white;
-            padding: 24px 28px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            gap: 16px;
-        }
-
-        .header-left h1 {
-            margin: 0;
-            font-size: 28px;
-        }
-
-        .header-left p {
-            margin: 8px 0 0;
-            opacity: 0.92;
-            font-size: 14px;
-        }
-
-        .logout-btn {
-            border: none;
-            background: white;
-            color: #2563eb;
-            padding: 10px 16px;
-            border-radius: 10px;
-            cursor: pointer;
-            font-weight: 700;
-        }
-
-        .join-area {
-            padding: 18px 28px;
-            border-bottom: 1px solid #e5e7eb;
-            display: flex;
-            flex-wrap: wrap;
-            gap: 12px;
-            align-items: center;
-            background: #f9fafb;
-        }
-
-        .join-area input {
-            flex: 1;
-            min-width: 180px;
-            padding: 12px 14px;
-            border: 1px solid #d1d5db;
-            border-radius: 10px;
-            outline: none;
-            font-size: 14px;
-        }
-
-        .join-area button,
-        .message-input button {
-            border: none;
-            background: #2563eb;
-            color: white;
-            padding: 12px 18px;
-            border-radius: 10px;
-            cursor: pointer;
-            font-size: 14px;
-            font-weight: 600;
-        }
-
-        .status-bar {
-            padding: 14px 28px;
-            background: #eff6ff;
-            border-bottom: 1px solid #dbeafe;
-            font-size: 14px;
-            color: #1d4ed8;
-        }
-
-        .main-content {
-            display: flex;
-            min-height: 580px;
-        }
-
-        .room-sidebar {
-            width: 240px;
-            border-right: 1px solid #e5e7eb;
-            background: #f9fafb;
+        .app {
+            min-height: 100vh;
             display: flex;
             flex-direction: column;
         }
 
-        .sidebar-title {
-            padding: 18px 18px 12px;
+        .topbar {
+            height: 72px;
+            background: linear-gradient(135deg, var(--primary), #60a5fa);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 28px;
+            box-shadow: 0 8px 24px var(--shadow);
+        }
+
+        .brand {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .brand h1 {
+            margin: 0;
+            font-size: 24px;
+        }
+
+        .brand span {
+            font-size: 13px;
+            opacity: 0.9;
+        }
+
+        .top-actions {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .top-btn {
+            border: none;
+            padding: 10px 14px;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.18);
+            color: white;
+            cursor: pointer;
             font-weight: 700;
-            color: #1f2937;
-            border-bottom: 1px solid #e5e7eb;
+        }
+
+        .top-btn:hover {
+            background: rgba(255, 255, 255, 0.28);
+        }
+
+        .layout {
+            flex: 1;
+            display: grid;
+            grid-template-columns: 260px 1fr 260px;
+            gap: 0;
+            max-width: 1500px;
+            width: 100%;
+            margin: 0 auto;
+            padding: 22px;
+        }
+
+        .panel {
+            background: var(--card);
+            border: 1px solid var(--border);
+            box-shadow: 0 8px 28px var(--shadow);
+        }
+
+        .left-panel {
+            border-radius: 18px 0 0 18px;
+            overflow: hidden;
+        }
+
+        .right-panel {
+            border-radius: 0 18px 18px 0;
+            overflow: hidden;
+        }
+
+        .chat-panel {
+            border-top: 1px solid var(--border);
+            border-bottom: 1px solid var(--border);
+            background: var(--card);
+            display: flex;
+            flex-direction: column;
+            min-height: calc(100vh - 116px);
+        }
+
+        .panel-title {
+            padding: 18px 18px;
+            border-bottom: 1px solid var(--border);
+            font-weight: 800;
+            font-size: 16px;
+        }
+
+        .user-card {
+            padding: 16px 18px;
+            border-bottom: 1px solid var(--border);
+            background: var(--card-soft);
+        }
+
+        .user-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .avatar {
+            width: 42px;
+            height: 42px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 900;
+            flex-shrink: 0;
+        }
+
+        .avatar.ai {
+            background: linear-gradient(135deg, #10b981, #22c55e);
+        }
+
+        .avatar.system {
+            background: linear-gradient(135deg, #6366f1, #818cf8);
+        }
+
+        .user-meta {
+            min-width: 0;
+        }
+
+        .user-meta .name {
+            font-weight: 800;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .user-meta .desc {
+            font-size: 12px;
+            color: var(--muted);
+            margin-top: 3px;
+        }
+
+        .join-box {
+            padding: 16px 18px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .join-box input {
+            width: 100%;
+            border: 1px solid var(--border);
+            background: var(--card);
+            color: var(--text);
+            padding: 12px 13px;
+            border-radius: 12px;
+            outline: none;
+            font-size: 14px;
+        }
+
+        .join-box button {
+            width: 100%;
+            margin-top: 10px;
+            border: none;
+            background: var(--primary);
+            color: white;
+            padding: 12px;
+            border-radius: 12px;
+            cursor: pointer;
+            font-weight: 800;
+        }
+
+        .join-box button:hover {
+            background: var(--primary-dark);
         }
 
         .room-section {
-            padding: 12px;
-            border-bottom: 1px solid #e5e7eb;
+            padding: 16px 18px;
         }
 
-        .room-section-label {
+        .section-label {
             font-size: 13px;
-            color: #6b7280;
-            margin-bottom: 10px;
-            font-weight: 700;
+            color: var(--muted);
+            font-weight: 800;
+            margin-bottom: 12px;
         }
 
         .room-list {
@@ -136,46 +244,50 @@
         }
 
         .room-item {
-            padding: 12px 14px;
-            border-radius: 10px;
+            padding: 13px 14px;
+            border-radius: 14px;
+            border: 1px solid var(--border);
+            background: var(--card-soft);
+            margin-bottom: 10px;
             cursor: pointer;
-            margin-bottom: 8px;
-            background: white;
-            border: 1px solid #e5e7eb;
-            transition: all 0.2s ease;
-            font-size: 14px;
+            font-weight: 700;
+            transition: 0.18s;
         }
 
         .room-item:hover {
-            background: #eef2ff;
-            border-color: #bfdbfe;
+            transform: translateY(-1px);
+            border-color: var(--primary);
         }
 
         .room-item.active {
-            background: #2563eb;
+            background: var(--primary);
             color: white;
-            border-color: #2563eb;
+            border-color: var(--primary);
         }
 
         .empty-tip {
+            color: var(--muted);
             font-size: 13px;
-            color: #9ca3af;
-            padding: 8px 4px;
+            line-height: 1.7;
         }
 
-        .chat-panel {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            border-right: 1px solid #e5e7eb;
+        .status {
+            padding: 14px 22px;
+            border-bottom: 1px solid var(--border);
+            background: var(--card-soft);
+            color: var(--muted);
+            font-size: 14px;
+        }
+
+        .status b {
+            color: var(--primary);
         }
 
         .chat-area {
-            padding: 20px 28px;
-            height: 460px;
-            overflow-y: auto;
-            background: #ffffff;
             flex: 1;
+            padding: 24px;
+            overflow-y: auto;
+            scroll-behavior: smooth;
         }
 
         .message-list {
@@ -186,238 +298,313 @@
 
         .message-row {
             display: flex;
-            margin-bottom: 14px;
+            gap: 10px;
+            margin-bottom: 18px;
+            align-items: flex-end;
         }
 
         .message-row.self {
             justify-content: flex-end;
         }
 
-        .message-row.other,
-        .message-row.system,
-        .message-row.ai {
-            justify-content: flex-start;
+        .message-row.self .msg-avatar {
+            order: 2;
+        }
+
+        .msg-avatar {
+            width: 34px;
+            height: 34px;
+            border-radius: 50%;
+            flex-shrink: 0;
+            background: linear-gradient(135deg, #64748b, #94a3b8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 13px;
+            font-weight: 900;
+        }
+
+        .message-row.self .msg-avatar {
+            background: linear-gradient(135deg, #2563eb, #60a5fa);
+        }
+
+        .message-row.ai .msg-avatar {
+            background: linear-gradient(135deg, #10b981, #22c55e);
+        }
+
+        .message-row.system .msg-avatar {
+            background: linear-gradient(135deg, #6366f1, #818cf8);
         }
 
         .message-bubble {
             max-width: 72%;
-            padding: 10px 14px;
-            border-radius: 14px;
-            line-height: 1.5;
+            padding: 12px 14px;
+            border-radius: 18px;
+            line-height: 1.65;
             word-break: break-word;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+            box-shadow: 0 6px 18px var(--shadow);
+            background: var(--bubble-other);
+            color: var(--text);
         }
 
         .message-row.self .message-bubble {
-            background: #2563eb;
+            background: var(--bubble-self);
             color: white;
-            border-bottom-right-radius: 4px;
+            border-bottom-right-radius: 6px;
         }
 
         .message-row.other .message-bubble {
-            background: #f3f4f6;
-            color: #111827;
-            border-bottom-left-radius: 4px;
+            border-bottom-left-radius: 6px;
         }
 
         .message-row.system .message-bubble {
             background: #eef2ff;
             color: #4338ca;
-            border-bottom-left-radius: 4px;
+            border-bottom-left-radius: 6px;
+        }
+
+        body.dark .message-row.system .message-bubble {
+            background: #1e1b4b;
+            color: #c4b5fd;
         }
 
         .message-row.ai .message-bubble {
-            background: #ecfdf5;
+            background: var(--bubble-ai);
             color: #065f46;
-            border: 1px solid #a7f3d0;
-            border-bottom-left-radius: 4px;
+            border: 1px solid var(--ai-border);
+            border-bottom-left-radius: 6px;
+        }
+
+        body.dark .message-row.ai .message-bubble {
+            color: #d1fae5;
         }
 
         .message-meta {
             display: flex;
-            align-items: center;
             gap: 8px;
-            margin-bottom: 4px;
-            flex-wrap: wrap;
-        }
-
-        .message-sender {
+            align-items: center;
+            margin-bottom: 5px;
             font-size: 12px;
-            font-weight: 700;
             opacity: 0.9;
         }
 
+        .message-sender {
+            font-weight: 900;
+        }
+
         .message-time {
-            font-size: 12px;
             opacity: 0.75;
         }
 
         .message-text {
             font-size: 14px;
+            white-space: pre-wrap;
         }
 
-        .message-input {
+        .input-area {
+            padding: 16px 22px;
+            border-top: 1px solid var(--border);
+            background: var(--card-soft);
+        }
+
+        .input-row {
             display: flex;
             gap: 12px;
-            padding: 18px 28px 24px;
-            border-top: 1px solid #e5e7eb;
-            background: #f9fafb;
             align-items: center;
         }
 
-        .message-input input[type="text"] {
+        .ai-switch {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 12px;
+            border: 1px solid var(--border);
+            border-radius: 999px;
+            background: var(--card);
+            font-weight: 800;
+            color: var(--muted);
+            cursor: pointer;
+            white-space: nowrap;
+            user-select: none;
+        }
+
+        .ai-switch input {
+            accent-color: var(--primary);
+        }
+
+        .input-row input[type="text"] {
             flex: 1;
-            padding: 14px 16px;
-            border: 1px solid #d1d5db;
-            border-radius: 10px;
+            border: 1px solid var(--border);
+            background: var(--card);
+            color: var(--text);
+            padding: 14px 15px;
+            border-radius: 16px;
             outline: none;
             font-size: 14px;
         }
 
-        .ai-toggle {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            font-size: 14px;
-            color: #374151;
-            white-space: nowrap;
+        .send-btn {
+            border: none;
+            background: var(--primary);
+            color: white;
+            padding: 14px 20px;
+            border-radius: 16px;
+            cursor: pointer;
+            font-weight: 900;
         }
 
-        .sidebar {
-            width: 280px;
-            background: #fbfcff;
-            display: flex;
-            flex-direction: column;
+        .send-btn:hover {
+            background: var(--primary-dark);
         }
 
-        .sidebar-header {
-            padding: 18px 20px;
-            border-bottom: 1px solid #e5e7eb;
-            font-weight: 700;
-            color: #1f2937;
+        .tip {
+            margin-top: 10px;
+            font-size: 12px;
+            color: var(--muted);
         }
 
         .online-count {
             font-size: 13px;
-            color: #6b7280;
+            color: var(--muted);
+            font-weight: 600;
             margin-top: 4px;
-            font-weight: 400;
         }
 
         .user-list {
             list-style: none;
             margin: 0;
             padding: 14px;
-            overflow-y: auto;
         }
 
         .user-item {
-            background: white;
-            border: 1px solid #e5e7eb;
-            border-radius: 12px;
-            padding: 12px 14px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px;
+            background: var(--card-soft);
+            border: 1px solid var(--border);
+            border-radius: 14px;
             margin-bottom: 10px;
-            font-size: 14px;
-            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.03);
         }
 
         .user-item.self {
-            border-color: #93c5fd;
-            background: #eff6ff;
+            border-color: var(--primary);
         }
 
-        .tip {
-            padding: 0 28px 20px;
-            font-size: 13px;
-            color: #6b7280;
-            background: #f9fafb;
+        .small-avatar {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #2563eb, #8b5cf6);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: 900;
         }
 
-        @media (max-width: 980px) {
-            .main-content {
-                flex-direction: column;
+        @media (max-width: 1050px) {
+            .layout {
+                grid-template-columns: 1fr;
+                padding: 12px;
             }
 
-            .room-sidebar,
-            .sidebar {
-                width: 100%;
+            .left-panel,
+            .right-panel,
+            .chat-panel {
+                border-radius: 18px;
+                margin-bottom: 12px;
             }
 
             .chat-panel {
-                border-right: none;
-                border-bottom: 1px solid #e5e7eb;
+                min-height: 640px;
             }
 
-            .room-sidebar {
-                border-right: none;
-                border-bottom: 1px solid #e5e7eb;
+            .message-bubble {
+                max-width: 86%;
+            }
+
+            .topbar {
+                padding: 0 16px;
             }
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <div class="header-left">
+    <div class="app">
+        <div class="topbar">
+            <div class="brand">
                 <h1>校园聊天室</h1>
-                <p>第二阶段 + AI开关版：登录、数据库持久化、聊天记录、在线用户、AI助手</p>
+                <span>实时聊天 · AI助手 · 多房间 · 深色模式</span>
             </div>
-            <button class="logout-btn" onclick="logout()">退出登录</button>
+            <div class="top-actions">
+                <button class="top-btn" onclick="toggleTheme()">深色模式</button>
+                <button class="top-btn" onclick="logout()">退出登录</button>
+            </div>
         </div>
 
-        <div class="join-area">
-            <input id="usernameDisplay" disabled />
-            <input id="room" placeholder="也可以手动输入房间名" />
-            <button onclick="joinRoom()">进入房间</button>
-        </div>
+        <div class="layout">
+            <aside class="panel left-panel">
+                <div class="panel-title">房间</div>
 
-        <div class="status-bar" id="statusBar">
-            当前状态：未进入房间
-        </div>
+                <div class="user-card">
+                    <div class="user-row">
+                        <div class="avatar" id="myAvatar">U</div>
+                        <div class="user-meta">
+                            <div class="name" id="usernameText">未登录</div>
+                            <div class="desc">当前账号</div>
+                        </div>
+                    </div>
+                </div>
 
-        <div class="main-content">
-            <div class="room-sidebar">
-                <div class="sidebar-title">房间导航</div>
-
-                <div class="room-section">
-                    <div class="room-section-label">房间列表</div>
-                    <ul class="room-list" id="defaultRoomList"></ul>
+                <div class="join-box">
+                    <input id="room" placeholder="输入房间名，例如 cs / ai / dorm" />
+                    <button onclick="joinRoom()">进入房间</button>
                 </div>
 
                 <div class="room-section">
-                    <div class="room-section-label">最近使用</div>
+                    <div class="section-label">最近使用</div>
                     <ul class="room-list" id="recentRoomList"></ul>
-                    <div class="empty-tip" id="recentEmptyTip">还没有最近使用的房间</div>
+                    <div class="empty-tip" id="recentEmptyTip">
+                        还没有最近使用的房间。<br />
+                        先输入一个房间名进入吧。
+                    </div>
                 </div>
-            </div>
+            </aside>
 
-            <div class="chat-panel">
+            <main class="chat-panel">
+                <div class="status" id="statusBar">
+                    当前状态：未进入房间
+                </div>
+
                 <div class="chat-area" id="chatArea">
                     <ul id="messages" class="message-list"></ul>
                 </div>
 
-                <div class="message-input">
-                    <label class="ai-toggle">
-                        <input type="checkbox" id="aiToggle">
-                        开启AI
-                    </label>
-
-                    <input id="message" type="text" placeholder="输入消息；开启AI后可用 @ai 提问" />
-                    <button onclick="sendMessage()">发送</button>
+                <div class="input-area">
+                    <div class="input-row">
+                        <label class="ai-switch">
+                            <input type="checkbox" id="aiToggle">
+                            AI
+                        </label>
+                        <input id="message" type="text" placeholder="输入消息；开启AI后可用 @ai 提问" />
+                        <button class="send-btn" onclick="sendMessage()">发送</button>
+                    </div>
+                    <div class="tip">
+                        AI关闭时不会回复；AI开启后，只有输入 <b>@ai 问题</b> 才会触发AI。
+                    </div>
                 </div>
+            </main>
 
-                <div class="tip">
-                    提示：AI开关关闭时无法使用AI；AI开关开启后，只有输入 <b>@ai 问题</b> 才会触发AI回复。
-                </div>
-            </div>
-
-            <div class="sidebar">
-                <div class="sidebar-header">
+            <aside class="panel right-panel">
+                <div class="panel-title">
                     在线用户
                     <div class="online-count" id="onlineCount">当前 0 人</div>
                 </div>
                 <ul class="user-list" id="userList"></ul>
-            </div>
+            </aside>
         </div>
     </div>
 
@@ -429,8 +616,12 @@
         let currentUsername = "";
         let hasJoined = false;
 
-        const recentRoomsKey = "recent_rooms_v2";
-        let allRooms = [];
+        const recentRoomsKey = "recent_rooms_v3";
+        const themeKey = "chat_theme_v3";
+
+        function getInitial(name) {
+            return (name || "?").trim().charAt(0).toUpperCase();
+        }
 
         function getRecentRooms() {
             const data = localStorage.getItem(recentRoomsKey);
@@ -449,15 +640,40 @@
             renderRecentRooms();
         }
 
-        function updateStatus(text) {
-            document.getElementById("statusBar").innerText = text;
+        function updateStatus() {
+            const statusBar = document.getElementById("statusBar");
+
+            if (!hasJoined) {
+                statusBar.innerHTML = "当前状态：未进入房间";
+                return;
+            }
+
+            statusBar.innerHTML = `当前状态：已进入房间 <b>【${currentRoom}】</b>；当前用户：<b>${currentUsername}</b>`;
         }
 
-        function appendMessage(message) {
+        function typeWriter(element, text, speed = 22) {
+            let i = 0;
+            element.innerText = "";
+
+            function typing() {
+                if (i < text.length) {
+                    element.innerText += text.charAt(i);
+                    i++;
+                    const chatArea = document.getElementById("chatArea");
+                    chatArea.scrollTop = chatArea.scrollHeight;
+                    setTimeout(typing, speed);
+                }
+            }
+
+            typing();
+        }
+
+        function appendMessage(message, animateAI = false) {
             const messages = document.getElementById("messages");
             const row = document.createElement("li");
 
             let rowClass = "other";
+
             if (message.type === "system") {
                 rowClass = "system";
             } else if (message.type === "ai") {
@@ -467,6 +683,17 @@
             }
 
             row.className = "message-row " + rowClass;
+
+            const avatar = document.createElement("div");
+            avatar.className = "msg-avatar";
+
+            if (message.type === "ai") {
+                avatar.innerText = "AI";
+            } else if (message.type === "system") {
+                avatar.innerText = "S";
+            } else {
+                avatar.innerText = getInitial(message.sender);
+            }
 
             const bubble = document.createElement("div");
             bubble.className = "message-bubble";
@@ -484,77 +711,21 @@
 
             const text = document.createElement("div");
             text.className = "message-text";
-            function typeWriter(element, text, speed = 25) {
-    let i = 0;
-    element.innerText = "";
-
-    function typing() {
-        if (i < text.length) {
-            element.innerText += text.charAt(i);
-            i++;
-            setTimeout(typing, speed);
-        }
-    }
-
-    typing();
-}
-
-function appendMessage(message) {
-    const messages = document.getElementById("messages");
-    const row = document.createElement("li");
-
-    let rowClass = "other";
-    if (message.type === "system") {
-        rowClass = "system";
-    } else if (message.type === "ai") {
-        rowClass = "ai";
-    } else if (message.sender === currentUsername) {
-        rowClass = "self";
-    }
-
-    row.className = "message-row " + rowClass;
-
-    const bubble = document.createElement("div");
-    bubble.className = "message-bubble";
-
-    const meta = document.createElement("div");
-    meta.className = "message-meta";
-
-    const sender = document.createElement("div");
-    sender.className = "message-sender";
-    sender.innerText = message.sender || "未知用户";
-
-    const time = document.createElement("div");
-    time.className = "message-time";
-    time.innerText = message.time || "";
-
-    const text = document.createElement("div");
-    text.className = "message-text";
-
-    meta.appendChild(sender);
-    meta.appendChild(time);
-    bubble.appendChild(meta);
-    bubble.appendChild(text);
-    row.appendChild(bubble);
-    messages.appendChild(row);
-
-    // 👇 核心：AI打字效果
-    if (message.type === "ai") {
-        typeWriter(text, message.text || "", 25);
-    } else {
-        text.innerText = message.text || "";
-    }
-
-    const chatArea = document.getElementById("chatArea");
-    chatArea.scrollTop = chatArea.scrollHeight;
-}
 
             meta.appendChild(sender);
             meta.appendChild(time);
             bubble.appendChild(meta);
             bubble.appendChild(text);
+
+            row.appendChild(avatar);
             row.appendChild(bubble);
             messages.appendChild(row);
+
+            if (message.type === "ai" && animateAI) {
+                typeWriter(text, message.text || "", 22);
+            } else {
+                text.innerText = message.text || "";
+            }
 
             const chatArea = document.getElementById("chatArea");
             chatArea.scrollTop = chatArea.scrollHeight;
@@ -573,11 +744,17 @@ function appendMessage(message) {
 
                 if (user === currentUsername) {
                     li.classList.add("self");
-                    li.innerText = `${user}（你）`;
-                } else {
-                    li.innerText = user;
                 }
 
+                const avatar = document.createElement("div");
+                avatar.className = "small-avatar";
+                avatar.innerText = getInitial(user);
+
+                const name = document.createElement("div");
+                name.innerText = user === currentUsername ? `${user}（你）` : user;
+
+                li.appendChild(avatar);
+                li.appendChild(name);
                 userList.appendChild(li);
             });
         }
@@ -586,27 +763,10 @@ function appendMessage(message) {
             const items = document.querySelectorAll(".room-item");
             items.forEach(item => {
                 item.classList.remove("active");
-                if (item.innerText === roomName) {
+                if (item.dataset.room === roomName) {
                     item.classList.add("active");
                 }
             });
-        }
-
-        function renderRoomList() {
-            const ul = document.getElementById("defaultRoomList");
-            ul.innerHTML = "";
-
-            allRooms.forEach(roomName => {
-                const li = document.createElement("li");
-                li.className = "room-item";
-                li.innerText = roomName;
-                li.onclick = function() {
-                    selectRoom(roomName);
-                };
-                ul.appendChild(li);
-            });
-
-            highlightRoom(currentRoom);
         }
 
         function renderRecentRooms() {
@@ -626,6 +786,7 @@ function appendMessage(message) {
             recentRooms.forEach(function(roomName) {
                 const li = document.createElement("li");
                 li.className = "room-item";
+                li.dataset.room = roomName;
                 li.innerText = roomName;
                 li.onclick = function() {
                     selectRoom(roomName);
@@ -646,17 +807,8 @@ function appendMessage(message) {
             }
 
             currentUsername = data.username;
-            document.getElementById("usernameDisplay").value = currentUsername;
-        }
-
-        async function loadRooms() {
-            const res = await fetch("/api/rooms");
-            const data = await res.json();
-
-            if (data.ok) {
-                allRooms = data.rooms;
-                renderRoomList();
-            }
+            document.getElementById("usernameText").innerText = currentUsername;
+            document.getElementById("myAvatar").innerText = getInitial(currentUsername);
         }
 
         async function logout() {
@@ -682,15 +834,9 @@ function appendMessage(message) {
             });
 
             hasJoined = true;
-
-            if (!allRooms.includes(currentRoom)) {
-                allRooms.unshift(currentRoom);
-                renderRoomList();
-            }
-
             addRecentRoom(currentRoom);
             highlightRoom(currentRoom);
-            updateStatus(`当前状态：已进入房间【${currentRoom}】；当前用户：${currentUsername}`);
+            updateStatus();
         }
 
         function selectRoom(roomName) {
@@ -703,12 +849,12 @@ function appendMessage(message) {
             messagesList.innerHTML = "";
 
             messages.forEach(function(message) {
-                appendMessage(message);
+                appendMessage(message, false);
             });
         });
 
         socket.on("message", function(message) {
-            appendMessage(message);
+            appendMessage(message, true);
         });
 
         socket.on("user_list", function(users) {
@@ -748,10 +894,24 @@ function appendMessage(message) {
             }
         });
 
+        function toggleTheme() {
+            document.body.classList.toggle("dark");
+            const isDark = document.body.classList.contains("dark");
+            localStorage.setItem(themeKey, isDark ? "dark" : "light");
+        }
+
+        function loadTheme() {
+            const theme = localStorage.getItem(themeKey);
+            if (theme === "dark") {
+                document.body.classList.add("dark");
+            }
+        }
+
         async function initPage() {
+            loadTheme();
             await loadMe();
-            await loadRooms();
             renderRecentRooms();
+            updateStatus();
         }
 
         initPage();
