@@ -1,10 +1,11 @@
 import os
+import json
 import requests
 
 API_KEY = os.environ.get("DEEPSEEK_API_KEY", "")
 
 
-def ask_ai(message: str, mode: str = "default", context: str = "") -> str:
+def stream_ai(message: str, mode: str = "default", context: str = ""):
     url = "https://api.deepseek.com/chat/completions"
 
     system_prompts = {
@@ -15,6 +16,10 @@ def ask_ai(message: str, mode: str = "default", context: str = "") -> str:
         "senior": "你是一个靠谱的学长。请用轻松、实用、接地气的方式回答。",
         "funny": "你是一个吐槽风格的AI助手。回答可以幽默一点，但不要攻击别人。"
     }
+
+    if not API_KEY:
+        yield "AI暂时不可用：未配置 DEEPSEEK_API_KEY"
+        return
 
     system_prompt = system_prompts.get(mode, system_prompts["default"])
 
@@ -33,16 +38,37 @@ def ask_ai(message: str, mode: str = "default", context: str = "") -> str:
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_content}
         ],
-        "stream": False
+        "stream": True
     }
 
     try:
-        if not API_KEY:
-            return "AI暂时不可用：未配置 DEEPSEEK_API_KEY"
-
-        response = requests.post(url, headers=headers, json=data, timeout=60)
+        response = requests.post(
+            url,
+            headers=headers,
+            json=data,
+            stream=True,
+            timeout=120
+        )
         response.raise_for_status()
-        result = response.json()
-        return result["choices"][0]["message"]["content"].strip()
+
+        for line in response.iter_lines(decode_unicode=True):
+            if not line:
+                continue
+
+            if line.startswith("data: "):
+                line = line[6:]
+
+            if line == "[DONE]":
+                break
+
+            try:
+                chunk = json.loads(line)
+                delta = chunk["choices"][0].get("delta", {})
+                content = delta.get("content", "")
+                if content:
+                    yield content
+            except Exception:
+                continue
+
     except Exception as e:
-        return f"AI暂时不可用：{e}"
+        yield f"AI暂时不可用：{e}"
