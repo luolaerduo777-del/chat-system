@@ -65,8 +65,10 @@ def stream_ai(message: str, mode: str = "default", context: str = ""):
                 chunk = json.loads(line)
                 delta = chunk["choices"][0].get("delta", {})
                 content = delta.get("content", "")
+
                 if content:
                     yield content
+
             except Exception:
                 continue
 
