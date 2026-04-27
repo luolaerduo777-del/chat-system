@@ -409,6 +409,11 @@
             .chat-panel { min-height: 640px; }
             .message-bubble { max-width: 86%; }
         }
+@keyframes blink {
+    0% { opacity: 1; }
+    50% { opacity: 0; }
+    100% { opacity: 1; }
+}
     </style>
 </head>
 
@@ -653,7 +658,8 @@ function appendStreamingAIStart(message) {
 
     const text = document.createElement("div");
     text.className = "message-text";
-    text.innerText = "";
+    text.innerText = "AI助手 正在输入...\n";
+    text.dataset.typing = "1";   // 标记正在打字
 
     meta.appendChild(sender);
     meta.appendChild(time);
@@ -672,14 +678,26 @@ function appendStreamingAIChunk(data) {
     const el = streamingAIMap[data.id];
     if (!el) return;
 
+    // 如果是第一次写入，清掉“正在输入”
+    if (el.dataset.typing === "1") {
+        el.innerText = "";
+        el.dataset.typing = "0";
+    }
+
     el.innerText += data.text || "";
+
+    // 加光标
+    el.innerText = el.innerText.replace(/▌$/, "") + "▌";
+
     scrollBottom();
 }
-
 function finishStreamingAI(data) {
+    const el = streamingAIMap[data.id];
+    if (el) {
+        el.innerText = el.innerText.replace(/▌$/, "");
+    }
     delete streamingAIMap[data.id];
 }
-
 function joinRoom() {
     const roomInput = document.getElementById("room");
     currentRoom = roomInput.value.trim();
