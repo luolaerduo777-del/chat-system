@@ -778,34 +778,66 @@ function appendStreamingAIStart(message) {
     scrollBottom();
 }
 
+const aiBufferMap = {};
+const aiTimerMap = {};
+
 function appendStreamingAIChunk(data) {
     const el = streamingAIMap[data.id];
     if (!el) return;
 
-    if (el.dataset.typing === "1") {
-        el.innerText = "";
-        el.dataset.typing = "0";
+    // 初始化 buffer
+    if (!aiBufferMap[data.id]) {
+        aiBufferMap[data.id] = "";
     }
 
-    const oldText = el.innerText.endsWith(aiCursor)
-        ? el.innerText.slice(0, -1)
-        : el.innerText;
+    aiBufferMap[data.id] += data.text || "";
 
-    el.innerText = oldText + (data.text || "") + aiCursor;
+    // 如果已经在打字，就不重复开定时器
+    if (aiTimerMap[data.id]) return;
 
-    scrollBottom();
+    aiTimerMap[data.id] = setInterval(() => {
+        let buffer = aiBufferMap[data.id];
+        if (!buffer || buffer.length === 0) return;
+
+        if (el.dataset.typing === "1") {
+            el.innerText = "";
+            el.dataset.typing = "0";
+        }
+
+        const oldText = el.innerText.endsWith(aiCursor)
+            ? el.innerText.slice(0, -1)
+            : el.innerText;
+
+        // 👉 一次输出 2~3 个字符（关键）
+        const chunk = buffer.slice(0, 3);
+        aiBufferMap[data.id] = buffer.slice(3);
+
+        el.innerText = oldText + chunk + aiCursor;
+
+        // buffer 清空 → 停止
+        if (aiBufferMap[data.id].length === 0) {
+            clearInterval(aiTimerMap[data.id]);
+            aiTimerMap[data.id] = null;
+        }
+
+        scrollBottom();
+    }, 25);
 }
-
 function finishStreamingAI(data) {
     const el = streamingAIMap[data.id];
 
-    if (el && el.innerText.endsWith(aiCursor)) {
-        el.innerText = el.innerText.slice(0, -1);
+    if (el) {
+        if (el.innerText.endsWith(aiCursor)) {
+            el.innerText = el.innerText.slice(0, -1);
+        }
     }
 
+    // 清理
+    clearInterval(aiTimerMap[data.id]);
+    delete aiTimerMap[data.id];
+    delete aiBufferMap[data.id];
     delete streamingAIMap[data.id];
 }
-
 function joinRoom() {
     const roomInput = document.getElementById("room");
     currentRoom = roomInput.value.trim();
@@ -814,7 +846,6 @@ function joinRoom() {
         alert("请先登录并输入房间名");
         return;
     }
-
     document.getElementById("messages").innerHTML = "";
     document.getElementById("userList").innerHTML = "";
     document.getElementById("onlineCount").innerText = "当前 0 人";
