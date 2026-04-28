@@ -781,18 +781,28 @@ function appendStreamingAIStart(message) {
 const aiBufferMap = {};
 const aiTimerMap = {};
 
+function cleanAIText(text) {
+    return text
+        // 英文单词被拆开：H e l l o → Hello
+        .replace(/\b([A-Za-z])(?:\s+([A-Za-z])){2,}\b/g, match => {
+            return match.replace(/\s+/g, "");
+        })
+        // 中文被拆开：这 是 → 这是
+        .replace(/([\u4e00-\u9fa5])\s+(?=[\u4e00-\u9fa5])/g, "$1")
+        // 标点前空格
+        .replace(/\s+([，。！？、；：,.!?;:])/g, "$1");
+}
+
 function appendStreamingAIChunk(data) {
     const el = streamingAIMap[data.id];
     if (!el) return;
 
-    // 初始化 buffer
     if (!aiBufferMap[data.id]) {
         aiBufferMap[data.id] = "";
     }
 
     aiBufferMap[data.id] += data.text || "";
 
-    // 如果已经在打字，就不重复开定时器
     if (aiTimerMap[data.id]) return;
 
     aiTimerMap[data.id] = setInterval(() => {
@@ -808,13 +818,14 @@ function appendStreamingAIChunk(data) {
             ? el.innerText.slice(0, -1)
             : el.innerText;
 
-        // 👉 一次输出 2~3 个字符（关键）
         const chunk = buffer.slice(0, 3);
         aiBufferMap[data.id] = buffer.slice(3);
 
-        el.innerText = oldText + chunk + aiCursor;
+        // 🔥 关键：每次都清洗整段
+        const newText = cleanAIText(oldText + chunk);
 
-        // buffer 清空 → 停止
+        el.innerText = newText + aiCursor;
+
         if (aiBufferMap[data.id].length === 0) {
             clearInterval(aiTimerMap[data.id]);
             aiTimerMap[data.id] = null;
