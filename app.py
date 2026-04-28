@@ -25,6 +25,7 @@ socketio = SocketIO(app, cors_allowed_origins="*")
 
 room_users = {}
 user_sessions = {}
+user_sid_map = {}
 DEFAULT_ROOMS = []
 
 
@@ -192,6 +193,8 @@ def handle_join(data):
         "room": room_name
     }
 
+    user_sid_map[username] = sid
+
     history = get_recent_messages(room_name, limit=100)
     emit("history", history)
 
@@ -312,6 +315,41 @@ def handle_message(data):
     }, to=room_name)
 
 
+@socketio.on("private_message")
+def handle_private_message(data):
+    sender = current_username()
+    to_user = str((data or {}).get("to", "")).strip()
+    msg = str((data or {}).get("msg", "")).strip()
+
+    if not sender:
+        emit("error_message", "请先登录")
+        return
+
+    if not to_user or not msg:
+        return
+
+    if to_user == sender:
+        emit("error_message", "不能给自己发私聊")
+        return
+
+    target_sid = user_sid_map.get(to_user)
+
+    if not target_sid:
+        emit("error_message", f"{to_user} 当前不在线")
+        return
+
+    message_data = {
+        "type": "private",
+        "sender": sender,
+        "to": to_user,
+        "text": msg,
+        "time": now_display_time()
+    }
+
+    socketio.emit("private_message", message_data, to=target_sid)
+    emit("private_message", message_data)
+
+
 @socketio.on("disconnect")
 def handle_disconnect():
     sid = request.sid
@@ -321,6 +359,9 @@ def handle_disconnect():
 
     username = user_sessions[sid]["username"]
     room_name = user_sessions[sid]["room"]
+
+    if username in user_sid_map and user_sid_map[username] == sid:
+        del user_sid_map[username]
 
     if room_name in room_users and username in room_users[room_name]:
         room_users[room_name].remove(username)

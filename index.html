@@ -23,6 +23,8 @@
             --bubble-other: #f1f5f9;
             --bubble-ai: #ecfdf5;
             --ai-border: #86efac;
+            --private: #f97316;
+            --private-soft: #fff7ed;
             --shadow: rgba(15, 23, 42, 0.08);
         }
 
@@ -38,6 +40,7 @@
             --bubble-other: #1e293b;
             --bubble-ai: #064e3b;
             --ai-border: #10b981;
+            --private-soft: #431407;
             --shadow: rgba(0, 0, 0, 0.35);
         }
 
@@ -256,10 +259,34 @@
             background: var(--card-soft);
             color: var(--muted);
             font-size: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
         }
 
         .status b {
             color: var(--primary);
+        }
+
+        .status.private-status b {
+            color: var(--private);
+        }
+
+        .exit-private-btn {
+            border: 1px solid var(--border);
+            background: var(--card);
+            color: var(--text);
+            border-radius: 999px;
+            padding: 7px 12px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 800;
+            display: none;
+        }
+
+        .status.private-status .exit-private-btn {
+            display: inline-block;
         }
 
         .chat-area {
@@ -315,6 +342,10 @@
             background: linear-gradient(135deg, #6366f1, #818cf8);
         }
 
+        .message-row.private .msg-avatar {
+            background: linear-gradient(135deg, #f97316, #fb923c);
+        }
+
         .message-bubble {
             max-width: 72%;
             padding: 12px 14px;
@@ -352,6 +383,17 @@
         body.dark .message-row.system .message-bubble {
             background: #1e1b4b;
             color: #c4b5fd;
+        }
+
+        .message-row.private .message-bubble {
+            background: var(--private-soft);
+            border: 1px solid #fdba74;
+            color: #9a3412;
+            border-bottom-left-radius: 6px;
+        }
+
+        body.dark .message-row.private .message-bubble {
+            color: #fed7aa;
         }
 
         .message-meta {
@@ -432,6 +474,11 @@
             transform: translateX(22px);
         }
 
+        body.private-mode .ai-toggle-switch {
+            opacity: .45;
+            pointer-events: none;
+        }
+
         .input-row input[type="text"] {
             flex: 1;
             border: 1px solid var(--border);
@@ -453,9 +500,17 @@
             font-weight: 900;
         }
 
+        body.private-mode .send-btn {
+            background: var(--private);
+        }
+
         .send-btn:hover {
             background: var(--primary-dark);
             transform: translateY(-2px);
+        }
+
+        body.private-mode .send-btn:hover {
+            background: #ea580c;
         }
 
         .tip {
@@ -483,10 +538,23 @@
             border: 1px solid var(--border);
             border-radius: 14px;
             margin-bottom: 10px;
+            cursor: pointer;
+            position: relative;
+        }
+
+        .user-item:hover {
+            transform: translateY(-2px);
+            border-color: var(--primary);
         }
 
         .user-item.self {
             border-color: var(--primary);
+            cursor: default;
+        }
+
+        .user-item.active-private {
+            border-color: var(--private);
+            background: var(--private-soft);
         }
 
         .small-avatar {
@@ -494,6 +562,37 @@
             height: 30px;
             font-size: 12px;
             background: linear-gradient(135deg, #2563eb, #8b5cf6);
+        }
+
+        .user-name-wrap {
+            flex: 1;
+            min-width: 0;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            font-weight: 700;
+        }
+
+        .private-hint {
+            font-size: 11px;
+            color: var(--muted);
+            margin-top: 2px;
+            font-weight: 500;
+        }
+
+        .unread-badge {
+            min-width: 20px;
+            height: 20px;
+            border-radius: 999px;
+            padding: 0 6px;
+            background: #ef4444;
+            color: white;
+            font-size: 12px;
+            font-weight: 900;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
         }
 
         @media (max-width: 1050px) {
@@ -525,7 +624,7 @@
     <div class="topbar">
         <div class="brand">
             <h1>校园聊天室</h1>
-            <span>实时聊天 · AI助手 · 流式输出 · 多房间</span>
+            <span>实时聊天 · 私聊未读 · AI助手 · 流式输出 · 多房间</span>
         </div>
         <div class="top-actions">
             <button class="top-btn" onclick="toggleTheme()">深色模式</button>
@@ -563,7 +662,10 @@
         </aside>
 
         <main class="chat-panel">
-            <div class="status" id="statusBar">当前状态：未进入房间</div>
+            <div class="status" id="statusBar">
+                <span id="statusText">当前状态：未进入房间</span>
+                <button class="exit-private-btn" onclick="exitPrivateChat()">返回房间</button>
+            </div>
 
             <div class="chat-area" id="chatArea">
                 <ul id="messages" class="message-list"></ul>
@@ -581,8 +683,8 @@
                     <button class="send-btn" onclick="sendMessage()">发送</button>
                 </div>
 
-                <div class="tip">
-                    AI开启后，输入 <b>@ai 问题</b> 才会触发AI。支持：@ai 总结 / @ai 笔记 / @ai 老师 / @ai 学长 / @ai 吐槽
+                <div class="tip" id="inputTip">
+                    AI开启后，输入 <b>@ai 问题</b> 才会触发AI。点击右侧在线用户可进入私聊，收到私聊会显示红点。
                 </div>
             </div>
         </main>
@@ -605,10 +707,14 @@ const socket = io();
 let currentRoom = "";
 let currentUsername = "";
 let hasJoined = false;
+let privateTarget = null;
 
 const recentRoomsKey = "recent_rooms_v3";
 const themeKey = "chat_theme_v3";
 const streamingAIMap = {};
+const aiBufferMap = {};
+const aiTimerMap = {};
+const unreadMap = {};
 const aiCursor = "|";
 
 function getInitial(name) {
@@ -667,7 +773,7 @@ function renderRecentRooms() {
         li.innerText = roomName;
         li.onclick = () => selectRoom(roomName);
 
-        if (roomName === currentRoom) {
+        if (!privateTarget && roomName === currentRoom) {
             li.classList.add("active");
         }
 
@@ -677,13 +783,30 @@ function renderRecentRooms() {
 
 function updateStatus() {
     const statusBar = document.getElementById("statusBar");
+    const statusText = document.getElementById("statusText");
+    const input = document.getElementById("message");
+    const inputTip = document.getElementById("inputTip");
 
-    if (!hasJoined) {
-        statusBar.innerHTML = "当前状态：未进入房间";
+    statusBar.classList.toggle("private-status", !!privateTarget);
+    document.body.classList.toggle("private-mode", !!privateTarget);
+
+    if (privateTarget) {
+        statusText.innerHTML = `当前状态：正在和 <b>${privateTarget}</b> 私聊`;
+        input.placeholder = `发给 ${privateTarget} 的私聊消息`;
+        inputTip.innerHTML = `当前是 <b>私聊模式</b>，消息只会发给 ${privateTarget}。点击“返回房间”可继续房间聊天。`;
         return;
     }
 
-    statusBar.innerHTML = `当前状态：已进入房间 <b>【${currentRoom}】</b>；当前用户：<b>${currentUsername}</b>`;
+    if (!hasJoined) {
+        statusText.innerHTML = "当前状态：未进入房间";
+        input.placeholder = "输入消息；开启AI后可用 @ai 提问";
+        inputTip.innerHTML = `AI开启后，输入 <b>@ai 问题</b> 才会触发AI。点击右侧在线用户可进入私聊，收到私聊会显示红点。`;
+        return;
+    }
+
+    statusText.innerHTML = `当前状态：已进入房间 <b>【${currentRoom}】</b>；当前用户：<b>${currentUsername}</b>`;
+    input.placeholder = "输入消息；开启AI后可用 @ai 提问";
+    inputTip.innerHTML = `AI开启后，输入 <b>@ai 问题</b> 才会触发AI。点击右侧在线用户可进入私聊，收到私聊会显示红点。`;
 }
 
 function appendMessage(message) {
@@ -698,6 +821,8 @@ function appendMessage(message) {
         rowClass = "ai";
     } else if (message.sender === currentUsername) {
         rowClass = "self";
+    } else if (message.type === "private") {
+        rowClass = "private";
     }
 
     row.className = "message-row " + rowClass;
@@ -714,7 +839,13 @@ function appendMessage(message) {
 
     const sender = document.createElement("div");
     sender.className = "message-sender";
-    sender.innerText = message.sender || "未知用户";
+
+    if (message.type === "private") {
+        const targetName = message.sender === currentUsername ? message.to : message.sender;
+        sender.innerText = `私聊 · ${message.sender || "未知用户"}${targetName ? " → " + targetName : ""}`;
+    } else {
+        sender.innerText = message.sender || "未知用户";
+    }
 
     const time = document.createElement("div");
     time.className = "message-time";
@@ -734,6 +865,15 @@ function appendMessage(message) {
     messages.appendChild(row);
 
     scrollBottom();
+}
+
+function appendSystemTip(text) {
+    appendMessage({
+        type: "system",
+        sender: "系统",
+        text,
+        time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+    });
 }
 
 function appendStreamingAIStart(message) {
@@ -778,18 +918,12 @@ function appendStreamingAIStart(message) {
     scrollBottom();
 }
 
-const aiBufferMap = {};
-const aiTimerMap = {};
-
 function cleanAIText(text) {
     return text
-        // 英文单词被拆开：H e l l o → Hello
         .replace(/\b([A-Za-z])(?:\s+([A-Za-z])){2,}\b/g, match => {
             return match.replace(/\s+/g, "");
         })
-        // 中文被拆开：这 是 → 这是
         .replace(/([\u4e00-\u9fa5])\s+(?=[\u4e00-\u9fa5])/g, "$1")
-        // 标点前空格
         .replace(/\s+([，。！？、；：,.!?;:])/g, "$1");
 }
 
@@ -821,9 +955,7 @@ function appendStreamingAIChunk(data) {
         const chunk = buffer.slice(0, 3);
         aiBufferMap[data.id] = buffer.slice(3);
 
-        // 🔥 关键：每次都清洗整段
         const newText = cleanAIText(oldText + chunk);
-
         el.innerText = newText + aiCursor;
 
         if (aiBufferMap[data.id].length === 0) {
@@ -834,12 +966,12 @@ function appendStreamingAIChunk(data) {
         scrollBottom();
     }, 25);
 }
+
 function finishStreamingAI(data) {
     const el = streamingAIMap[data.id];
 
     if (!el) return;
 
-    // 先把还没显示完的 buffer 全部补上，防止末尾缺字
     const buffer = aiBufferMap[data.id] || "";
 
     if (buffer.length > 0) {
@@ -851,21 +983,18 @@ function finishStreamingAI(data) {
         el.innerText = finalText;
     }
 
-    // 去掉最后的光标 |
     if (el.innerText.endsWith(aiCursor)) {
         el.innerText = el.innerText.slice(0, -1);
     }
 
-    // 停止定时器
     clearInterval(aiTimerMap[data.id]);
-
-    // 清理缓存
     delete aiTimerMap[data.id];
     delete aiBufferMap[data.id];
     delete streamingAIMap[data.id];
 
     scrollBottom();
 }
+
 function joinRoom() {
     const roomInput = document.getElementById("room");
     currentRoom = roomInput.value.trim();
@@ -874,6 +1003,8 @@ function joinRoom() {
         alert("请先登录并输入房间名");
         return;
     }
+
+    privateTarget = null;
     document.getElementById("messages").innerHTML = "";
     document.getElementById("userList").innerHTML = "";
     document.getElementById("onlineCount").innerText = "当前 0 人";
@@ -891,8 +1022,38 @@ function selectRoom(roomName) {
     joinRoom();
 }
 
+function startPrivateChat(user) {
+    if (!user || user === currentUsername) return;
+
+    privateTarget = user;
+    unreadMap[user] = 0;
+
+    document.getElementById("messages").innerHTML = "";
+    appendSystemTip(`已进入与 ${user} 的私聊。`);
+
+    renderRecentRooms();
+    renderUserList(lastUserList);
+    updateStatus();
+    document.getElementById("message").focus();
+}
+
+function exitPrivateChat() {
+    privateTarget = null;
+    document.getElementById("messages").innerHTML = "";
+
+    if (hasJoined && currentRoom) {
+        socket.emit("join", { room: currentRoom });
+    } else {
+        appendSystemTip("已退出私聊。请先进入一个房间。");
+    }
+
+    renderRecentRooms();
+    renderUserList(lastUserList);
+    updateStatus();
+}
+
 function sendMessage() {
-    if (!hasJoined) {
+    if (!hasJoined && !privateTarget) {
         alert("请先进入房间");
         return;
     }
@@ -901,6 +1062,15 @@ function sendMessage() {
     const msg = input.value.trim();
 
     if (!msg) return;
+
+    if (privateTarget) {
+        socket.emit("private_message", {
+            to: privateTarget,
+            msg: msg
+        });
+        input.value = "";
+        return;
+    }
 
     const aiEnabled = document.getElementById("aiToggle").checked;
 
@@ -913,14 +1083,18 @@ function sendMessage() {
     input.value = "";
 }
 
+let lastUserList = [];
+
 function renderUserList(users) {
+    lastUserList = users || [];
+
     const userList = document.getElementById("userList");
     const onlineCount = document.getElementById("onlineCount");
 
     userList.innerHTML = "";
-    onlineCount.innerText = `当前 ${users.length} 人`;
+    onlineCount.innerText = `当前 ${lastUserList.length} 人`;
 
-    users.forEach(user => {
+    lastUserList.forEach(user => {
         const li = document.createElement("li");
         li.className = "user-item";
 
@@ -928,17 +1102,63 @@ function renderUserList(users) {
             li.classList.add("self");
         }
 
+        if (privateTarget === user) {
+            li.classList.add("active-private");
+        }
+
+        if (user !== currentUsername) {
+            li.onclick = () => startPrivateChat(user);
+            li.title = `点击和 ${user} 私聊`;
+        }
+
         const avatar = document.createElement("div");
         avatar.className = "small-avatar";
         avatar.innerText = getInitial(user);
 
+        const wrap = document.createElement("div");
+        wrap.className = "user-name-wrap";
+
+        const nameBox = document.createElement("div");
         const name = document.createElement("div");
         name.innerText = user === currentUsername ? `${user}（你）` : user;
+        nameBox.appendChild(name);
+
+        if (user !== currentUsername) {
+            const hint = document.createElement("div");
+            hint.className = "private-hint";
+            hint.innerText = privateTarget === user ? "正在私聊" : "点击私聊";
+            nameBox.appendChild(hint);
+        }
+
+        wrap.appendChild(nameBox);
+
+        if (unreadMap[user] && unreadMap[user] > 0) {
+            const badge = document.createElement("span");
+            badge.className = "unread-badge";
+            badge.innerText = unreadMap[user] > 99 ? "99+" : unreadMap[user];
+            wrap.appendChild(badge);
+        }
 
         li.appendChild(avatar);
-        li.appendChild(name);
+        li.appendChild(wrap);
         userList.appendChild(li);
     });
+}
+
+function handlePrivateMessage(msg) {
+    const otherUser = msg.sender === currentUsername ? msg.to : msg.sender;
+
+    if (privateTarget === otherUser) {
+        appendMessage({
+            ...msg,
+            type: "private"
+        });
+    } else {
+        unreadMap[otherUser] = (unreadMap[otherUser] || 0) + 1;
+        renderUserList(lastUserList);
+
+        appendSystemTip(`收到 ${otherUser} 的私聊消息，点击右侧用户查看。`);
+    }
 }
 
 function scrollBottom() {
@@ -964,16 +1184,36 @@ function loadTheme() {
 }
 
 socket.on("history", messages => {
+    if (privateTarget) return;
     document.getElementById("messages").innerHTML = "";
     messages.forEach(msg => appendMessage(msg));
 });
 
-socket.on("message", msg => appendMessage(msg));
-socket.on("ai_start", msg => appendStreamingAIStart(msg));
-socket.on("ai_chunk", data => appendStreamingAIChunk(data));
-socket.on("ai_end", data => finishStreamingAI(data));
+socket.on("message", msg => {
+    if (!privateTarget) appendMessage(msg);
+});
+
+socket.on("ai_start", msg => {
+    if (!privateTarget) appendStreamingAIStart(msg);
+});
+
+socket.on("ai_chunk", data => {
+    if (!privateTarget) appendStreamingAIChunk(data);
+});
+
+socket.on("ai_end", data => {
+    if (!privateTarget) finishStreamingAI(data);
+});
+
+socket.on("private_message", msg => handlePrivateMessage(msg));
 socket.on("user_list", users => renderUserList(users));
 socket.on("error_message", msg => alert(msg));
+
+socket.on("connect", () => {
+    if (hasJoined && currentRoom) {
+        socket.emit("join", { room: currentRoom });
+    }
+});
 
 document.getElementById("message").addEventListener("keydown", event => {
     if (event.key === "Enter") {
