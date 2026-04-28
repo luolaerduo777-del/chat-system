@@ -837,17 +837,34 @@ function appendStreamingAIChunk(data) {
 function finishStreamingAI(data) {
     const el = streamingAIMap[data.id];
 
-    if (el) {
-        if (el.innerText.endsWith(aiCursor)) {
-            el.innerText = el.innerText.slice(0, -1);
-        }
+    if (!el) return;
+
+    // 先把还没显示完的 buffer 全部补上，防止末尾缺字
+    const buffer = aiBufferMap[data.id] || "";
+
+    if (buffer.length > 0) {
+        const oldText = el.innerText.endsWith(aiCursor)
+            ? el.innerText.slice(0, -1)
+            : el.innerText;
+
+        const finalText = cleanAIText(oldText + buffer);
+        el.innerText = finalText;
     }
 
-    // 清理
+    // 去掉最后的光标 |
+    if (el.innerText.endsWith(aiCursor)) {
+        el.innerText = el.innerText.slice(0, -1);
+    }
+
+    // 停止定时器
     clearInterval(aiTimerMap[data.id]);
+
+    // 清理缓存
     delete aiTimerMap[data.id];
     delete aiBufferMap[data.id];
     delete streamingAIMap[data.id];
+
+    scrollBottom();
 }
 function joinRoom() {
     const roomInput = document.getElementById("room");
