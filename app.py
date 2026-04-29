@@ -14,6 +14,9 @@ from database import (
     get_all_rooms,
     save_message,
     get_recent_messages,
+    save_private_message,
+    get_private_messages,
+    get_conversations,
 )
 from ai_service import stream_ai
 
@@ -101,6 +104,7 @@ def api_register():
         return jsonify({"ok": False, "message": "密码至少4位"}), 400
 
     success = create_user(username, password, now_full_time())
+
     if not success:
         return jsonify({"ok": False, "message": "用户名已存在"}), 400
 
@@ -114,6 +118,7 @@ def api_login():
     password = str(data.get("password", "")).strip()
 
     user = get_user_by_username(username)
+
     if user is None or user["password"] != password:
         return jsonify({"ok": False, "message": "用户名或密码错误"}), 400
 
@@ -132,14 +137,51 @@ def api_me():
     if not is_logged_in():
         return jsonify({"ok": False, "message": "未登录"}), 401
 
-    return jsonify({"ok": True, "username": session["username"]})
+    return jsonify({
+        "ok": True,
+        "username": session["username"]
+    })
 
 
 @app.route("/api/rooms")
 def api_rooms():
     db_rooms = get_all_rooms()
     room_list = list(dict.fromkeys(DEFAULT_ROOMS + db_rooms))
-    return jsonify({"ok": True, "rooms": room_list})
+
+    return jsonify({
+        "ok": True,
+        "rooms": room_list
+    })
+
+
+@app.route("/api/private_history/<target_user>")
+def api_private_history(target_user):
+    username = current_username()
+
+    if not username:
+        return jsonify({"ok": False, "message": "未登录"}), 401
+
+    messages = get_private_messages(username, target_user, limit=100)
+
+    return jsonify({
+        "ok": True,
+        "messages": messages
+    })
+
+
+@app.route("/api/conversations")
+def api_conversations():
+    username = current_username()
+
+    if not username:
+        return jsonify({"ok": False, "message": "未登录"}), 401
+
+    conversations = get_conversations(username)
+
+    return jsonify({
+        "ok": True,
+        "conversations": conversations
+    })
 
 
 @socketio.on("join")
@@ -169,6 +211,7 @@ def handle_join(data):
                 room_users[old_room].remove(old_username)
 
                 leave_message = build_system_message(f"{old_username} 离开了房间 {old_room}")
+
                 save_message(
                     old_room,
                     leave_message["sender"],
@@ -177,6 +220,7 @@ def handle_join(data):
                     leave_message["time"],
                     now_full_time()
                 )
+
                 socketio.emit("message", leave_message, to=old_room)
                 broadcast_user_list(old_room)
 
@@ -199,6 +243,7 @@ def handle_join(data):
     emit("history", history)
 
     join_message = build_system_message(f"{username} 进入了房间 {room_name}")
+
     save_message(
         room_name,
         join_message["sender"],
@@ -227,6 +272,7 @@ def handle_message(data):
         return
 
     user_message = build_user_message(username, msg, "user")
+
     save_message(
         room_name,
         user_message["sender"],
@@ -235,6 +281,7 @@ def handle_message(data):
         user_message["time"],
         now_full_time()
     )
+
     socketio.emit("message", user_message, to=room_name)
 
     if not (ai_enabled and msg.lower().startswith("@ai")):
@@ -332,21 +379,29 @@ def handle_private_message(data):
         emit("error_message", "不能给自己发私聊")
         return
 
-    target_sid = user_sid_map.get(to_user)
+    time_str = now_display_time()
 
-    if not target_sid:
-        emit("error_message", f"{to_user} 当前不在线")
-        return
+    save_private_message(
+        sender,
+        to_user,
+        msg,
+        time_str,
+        now_full_time()
+    )
 
     message_data = {
         "type": "private",
         "sender": sender,
         "to": to_user,
         "text": msg,
-        "time": now_display_time()
+        "time": time_str
     }
 
-    socketio.emit("private_message", message_data, to=target_sid)
+    target_sid = user_sid_map.get(to_user)
+
+    if target_sid:
+        socketio.emit("private_message", message_data, to=target_sid)
+
     emit("private_message", message_data)
 
 
@@ -367,6 +422,7 @@ def handle_disconnect():
         room_users[room_name].remove(username)
 
     leave_message = build_system_message(f"{username} 离开了房间 {room_name}")
+
     save_message(
         room_name,
         leave_message["sender"],

@@ -1169,7 +1169,7 @@ function renderConversationList() {
     });
 }
 
-function startPrivateChat(user) {
+async function startPrivateChat(user) {
     if (user === currentUsername) return;
 
     ensureConversation(user);
@@ -1180,7 +1180,19 @@ function startPrivateChat(user) {
     updateStatus();
     renderUserList(lastUserList);
 
+    try {
+        const res = await fetch(`/api/private_history/${encodeURIComponent(user)}`);
+        const data = await res.json();
+
+        if (data.ok) {
+            privateChatMap[user] = data.messages || [];
+        }
+    } catch (e) {
+        console.error("加载私聊历史失败：", e);
+    }
+
     const history = privateChatMap[user] || [];
+
     history.forEach(msg => {
         appendMessage({
             ...msg,
@@ -1188,6 +1200,7 @@ function startPrivateChat(user) {
         });
     });
 
+    renderConversationList();
     scrollBottom();
 }
 
@@ -1232,7 +1245,12 @@ function loadTheme() {
 
 socket.on("history", messages => {
     document.getElementById("messages").innerHTML = "";
-    messages.forEach(msg => appendMessage(msg));
+
+    roomMessageCache.length = 0;
+    messages.forEach(msg => {
+        roomMessageCache.push(msg);
+        appendMessage(msg);
+    });
 });
 
 socket.on("message", msg => {
@@ -1281,10 +1299,41 @@ document.getElementById("message").addEventListener("keydown", event => {
     }
 });
 
+async function loadConversations() {
+    try {
+        const res = await fetch("/api/conversations");
+        const data = await res.json();
+
+        if (!data.ok) return;
+
+        conversationOrder.length = 0;
+
+        (data.conversations || []).forEach(item => {
+            const user = item.user;
+
+            ensureConversation(user);
+            moveConversationTop(user);
+
+            privateChatMap[user] = [{
+                type: "private",
+                sender: item.last_sender,
+                to: item.last_sender === currentUsername ? user : currentUsername,
+                text: item.last_text,
+                time: item.time
+            }];
+        });
+
+        renderConversationList();
+    } catch (e) {
+        console.error("加载会话列表失败：", e);
+    }
+}
+
 async function initPage() {
     loadTheme();
     await loadMe();
     renderRecentRooms();
+    await loadConversations();
     updateStatus();
 }
 
