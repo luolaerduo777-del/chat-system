@@ -1,14 +1,19 @@
-import sqlite3
-from pathlib import Path
+import os
+import psycopg2
+import psycopg2.extras
 
-BASE_DIR = Path(__file__).resolve().parent
-DB_PATH = BASE_DIR / "chat.db"
+
+DATABASE_URL = os.environ.get("DATABASE_URL")
 
 
 def get_connection():
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
-    return conn
+    if not DATABASE_URL:
+        raise RuntimeError("未配置 DATABASE_URL，请在 Render 环境变量中添加 PostgreSQL Internal URL")
+
+    return psycopg2.connect(
+        DATABASE_URL,
+        cursor_factory=psycopg2.extras.RealDictCursor
+    )
 
 
 def init_database():
@@ -17,7 +22,7 @@ def init_database():
 
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS users (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        id SERIAL PRIMARY KEY,
         username TEXT UNIQUE NOT NULL,
         password TEXT NOT NULL,
         created_at TEXT NOT NULL
@@ -26,7 +31,7 @@ def init_database():
 
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS rooms (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        id SERIAL PRIMARY KEY,
         name TEXT UNIQUE NOT NULL,
         created_at TEXT NOT NULL
     )
@@ -34,7 +39,7 @@ def init_database():
 
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS messages (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        id SERIAL PRIMARY KEY,
         room_name TEXT NOT NULL,
         sender TEXT NOT NULL,
         text TEXT NOT NULL,
@@ -46,7 +51,7 @@ def init_database():
 
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS private_messages (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        id SERIAL PRIMARY KEY,
         sender TEXT NOT NULL,
         receiver TEXT NOT NULL,
         text TEXT NOT NULL,
@@ -57,6 +62,7 @@ def init_database():
     """)
 
     conn.commit()
+    cursor.close()
     conn.close()
 
 
@@ -66,14 +72,16 @@ def create_user(username: str, password: str, created_at: str) -> bool:
 
     try:
         cursor.execute(
-            "INSERT INTO users (username, password, created_at) VALUES (?, ?, ?)",
+            "INSERT INTO users (username, password, created_at) VALUES (%s, %s, %s)",
             (username, password, created_at)
         )
         conn.commit()
         return True
-    except sqlite3.IntegrityError:
+    except psycopg2.errors.UniqueViolation:
+        conn.rollback()
         return False
     finally:
+        cursor.close()
         conn.close()
 
 
@@ -81,9 +89,10 @@ def get_user_by_username(username: str):
     conn = get_connection()
     cursor = conn.cursor()
 
-    cursor.execute("SELECT * FROM users WHERE username = ?", (username,))
+    cursor.execute("SELECT * FROM users WHERE username = %s", (username,))
     user = cursor.fetchone()
 
+    cursor.close()
     conn.close()
     return user
 
@@ -92,16 +101,14 @@ def create_room_if_not_exists(room_name: str, created_at: str):
     conn = get_connection()
     cursor = conn.cursor()
 
-    cursor.execute("SELECT id FROM rooms WHERE name = ?", (room_name,))
-    room = cursor.fetchone()
+    cursor.execute("""
+        INSERT INTO rooms (name, created_at)
+        VALUES (%s, %s)
+        ON CONFLICT (name) DO NOTHING
+    """, (room_name, created_at))
 
-    if room is None:
-        cursor.execute(
-            "INSERT INTO rooms (name, created_at) VALUES (?, ?)",
-            (room_name, created_at)
-        )
-        conn.commit()
-
+    conn.commit()
+    cursor.close()
     conn.close()
 
 
@@ -112,7 +119,9 @@ def get_all_rooms():
     cursor.execute("SELECT name FROM rooms ORDER BY id DESC")
     rows = cursor.fetchall()
 
+    cursor.close()
     conn.close()
+
     return [row["name"] for row in rows]
 
 
@@ -122,10 +131,11 @@ def save_message(room_name: str, sender: str, text: str, msg_type: str, time_str
 
     cursor.execute("""
         INSERT INTO messages (room_name, sender, text, msg_type, time_str, created_at)
-        VALUES (?, ?, ?, ?, ?, ?)
+        VALUES (%s, %s, %s, %s, %s, %s)
     """, (room_name, sender, text, msg_type, time_str, created_at))
 
     conn.commit()
+    cursor.close()
     conn.close()
 
 
@@ -136,12 +146,14 @@ def get_recent_messages(room_name: str, limit: int = 100):
     cursor.execute("""
         SELECT sender, text, msg_type, time_str
         FROM messages
-        WHERE room_name = ?
+        WHERE room_name = %s
         ORDER BY id DESC
-        LIMIT ?
+        LIMIT %s
     """, (room_name, limit))
 
     rows = cursor.fetchall()
+
+    cursor.close()
     conn.close()
 
     rows = list(rows)[::-1]
@@ -163,10 +175,11 @@ def save_private_message(sender: str, receiver: str, text: str, time_str: str, c
 
     cursor.execute("""
         INSERT INTO private_messages (sender, receiver, text, time_str, created_at, is_read)
-        VALUES (?, ?, ?, ?, ?, ?)
+        VALUES (%s, %s, %s, %s, %s, %s)
     """, (sender, receiver, text, time_str, created_at, 0))
 
     conn.commit()
+    cursor.close()
     conn.close()
 
 
@@ -178,14 +191,16 @@ def get_private_messages(user1: str, user2: str, limit: int = 100):
         SELECT sender, receiver, text, time_str
         FROM private_messages
         WHERE 
-            (sender = ? AND receiver = ?)
+            (sender = %s AND receiver = %s)
             OR
-            (sender = ? AND receiver = ?)
+            (sender = %s AND receiver = %s)
         ORDER BY id DESC
-        LIMIT ?
+        LIMIT %s
     """, (user1, user2, user2, user1, limit))
 
     rows = cursor.fetchall()
+
+    cursor.close()
     conn.close()
 
     rows = list(rows)[::-1]
@@ -209,11 +224,13 @@ def get_conversations(username: str):
     cursor.execute("""
         SELECT *
         FROM private_messages
-        WHERE sender = ? OR receiver = ?
+        WHERE sender = %s OR receiver = %s
         ORDER BY id DESC
     """, (username, username))
 
     rows = cursor.fetchall()
+
+    cursor.close()
     conn.close()
 
     seen = set()
