@@ -16,6 +16,7 @@ from database import (
     get_recent_messages,
     save_private_message,
     get_private_messages,
+    mark_private_messages_read,
     get_conversations,
 )
 from ai_service import stream_ai
@@ -161,12 +162,32 @@ def api_private_history(target_user):
     if not username:
         return jsonify({"ok": False, "message": "未登录"}), 401
 
+    target_user = str(target_user).strip()
     messages = get_private_messages(username, target_user, limit=100)
+
+    # 打开某个私聊窗口时，认为这个人发给我的消息已经读过。
+    mark_private_messages_read(username, target_user)
 
     return jsonify({
         "ok": True,
         "messages": messages
     })
+
+
+@app.route("/api/private_read/<target_user>", methods=["POST"])
+def api_private_read(target_user):
+    username = current_username()
+
+    if not username:
+        return jsonify({"ok": False, "message": "未登录"}), 401
+
+    target_user = str(target_user).strip()
+    if not target_user:
+        return jsonify({"ok": False, "message": "目标用户不能为空"}), 400
+
+    mark_private_messages_read(username, target_user)
+
+    return jsonify({"ok": True})
 
 
 @app.route("/api/conversations")

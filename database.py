@@ -61,6 +61,23 @@ def init_database():
     )
     """)
 
+    # 兼容旧数据库：如果之前建表时没有 is_read，这里自动补上。
+    cursor.execute("""
+        ALTER TABLE private_messages
+        ADD COLUMN IF NOT EXISTS is_read INTEGER DEFAULT 0
+    """)
+
+    # 提升会话列表、历史记录、未读统计查询速度。
+    cursor.execute("""
+        CREATE INDEX IF NOT EXISTS idx_private_messages_users_id
+        ON private_messages (sender, receiver, id DESC)
+    """)
+
+    cursor.execute("""
+        CREATE INDEX IF NOT EXISTS idx_private_messages_unread
+        ON private_messages (receiver, sender, is_read)
+    """)
+
     conn.commit()
     cursor.close()
     conn.close()
@@ -188,7 +205,7 @@ def get_private_messages(user1: str, user2: str, limit: int = 100):
     cursor = conn.cursor()
 
     cursor.execute("""
-        SELECT sender, receiver, text, time_str
+        SELECT sender, receiver, text, time_str, is_read
         FROM private_messages
         WHERE 
             (sender = %s AND receiver = %s)
@@ -211,10 +228,29 @@ def get_private_messages(user1: str, user2: str, limit: int = 100):
             "sender": row["sender"],
             "to": row["receiver"],
             "text": row["text"],
-            "time": row["time_str"]
+            "time": row["time_str"],
+            "is_read": row["is_read"]
         }
         for row in rows
     ]
+
+
+def mark_private_messages_read(reader: str, other_user: str):
+    """把 other_user 发给 reader 的未读私聊全部标记为已读。"""
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        UPDATE private_messages
+        SET is_read = 1
+        WHERE sender = %s
+          AND receiver = %s
+          AND is_read = 0
+    """, (other_user, reader))
+
+    conn.commit()
+    cursor.close()
+    conn.close()
 
 
 def get_conversations(username: str):
@@ -230,8 +266,22 @@ def get_conversations(username: str):
 
     rows = cursor.fetchall()
 
+    cursor.execute("""
+        SELECT sender, COUNT(*) AS unread_count
+        FROM private_messages
+        WHERE receiver = %s AND is_read = 0
+        GROUP BY sender
+    """, (username,))
+
+    unread_rows = cursor.fetchall()
+
     cursor.close()
     conn.close()
+
+    unread_map = {
+        row["sender"]: int(row["unread_count"])
+        for row in unread_rows
+    }
 
     seen = set()
     conversations = []
@@ -248,7 +298,8 @@ def get_conversations(username: str):
             "user": other_user,
             "last_text": row["text"],
             "last_sender": row["sender"],
-            "time": row["time_str"]
+            "time": row["time_str"],
+            "unread_count": unread_map.get(other_user, 0)
         })
 
     return conversations

@@ -1169,6 +1169,18 @@ function renderConversationList() {
     });
 }
 
+async function markPrivateRead(user) {
+    if (!user) return;
+
+    try {
+        await fetch(`/api/private_read/${encodeURIComponent(user)}`, {
+            method: "POST"
+        });
+    } catch (e) {
+        console.error("标记私聊已读失败：", e);
+    }
+}
+
 async function startPrivateChat(user) {
     if (user === currentUsername) return;
 
@@ -1186,6 +1198,8 @@ async function startPrivateChat(user) {
 
         if (data.ok) {
             privateChatMap[user] = data.messages || [];
+            unreadMap[user] = 0;
+            await markPrivateRead(user);
         }
     } catch (e) {
         console.error("加载私聊历史失败：", e);
@@ -1278,6 +1292,11 @@ socket.on("private_message", msg => {
             ...msg,
             type: "private"
         });
+
+        if (msg.sender !== currentUsername) {
+            unreadMap[chatUser] = 0;
+            markPrivateRead(chatUser);
+        }
     } else {
         if (msg.sender !== currentUsername) {
             unreadMap[chatUser] = (unreadMap[chatUser] || 0) + 1;
@@ -1321,6 +1340,8 @@ async function loadConversations() {
                 text: item.last_text,
                 time: item.time
             }];
+
+            unreadMap[user] = item.unread_count || 0;
         });
 
         renderConversationList();
