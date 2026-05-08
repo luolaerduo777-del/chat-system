@@ -1,8 +1,3 @@
-# app.py（刷新页面强制重新登录版）
-
-把你现在的 app.py 全部删除，然后用下面这个完整文件覆盖。
-
-```python
 import os
 import uuid
 from datetime import datetime
@@ -23,6 +18,8 @@ from database import (
     get_private_messages,
     mark_private_messages_read,
     get_conversations,
+    search_users,
+    user_exists,
 )
 from ai_service import stream_ai
 
@@ -30,10 +27,6 @@ BASE_DIR = Path(__file__).resolve().parent
 
 app = Flask(__name__, static_folder=None)
 app.secret_key = "chat-system-secret-key-change-me"
-
-# 🔥 刷新后强制重新登录
-app.config["SESSION_PERMANENT"] = False
-
 socketio = SocketIO(app, cors_allowed_origins="*")
 
 room_users = {}
@@ -56,6 +49,29 @@ def current_username():
 
 def is_logged_in():
     return "username" in session
+
+
+def build_system_message(text):
+    return {
+        "type": "system",
+        "sender": "系统",
+        "text": text,
+        "time": now_display_time()
+    }
+
+
+def build_user_message(sender, text, msg_type="user"):
+    return {
+        "type": msg_type,
+        "sender": sender,
+        "text": text,
+        "time": now_display_time()
+    }
+
+
+def broadcast_user_list(room_name):
+    users = room_users.get(room_name, [])
+    socketio.emit("user_list", users, to=room_name)
 
 
 @app.route("/")
@@ -110,7 +126,6 @@ def api_login():
         return jsonify({"ok": False, "message": "用户名或密码错误"}), 400
 
     session["username"] = username
-
     return jsonify({"ok": True, "message": "登录成功"})
 
 
@@ -120,21 +135,85 @@ def api_logout():
     return jsonify({"ok": True})
 
 
-# 🔥 每次刷新页面都会重新登录
 @app.route("/api/me")
 def api_me():
     if not is_logged_in():
         return jsonify({"ok": False, "message": "未登录"}), 401
 
-    username = session["username"]
+    return jsonify({
+        "ok": True,
+        "username": session["username"]
+    })
 
-    # 关键：返回用户名后立刻清 session
-    session.clear()
+
+@app.route("/api/rooms")
+def api_rooms():
+    db_rooms = get_all_rooms()
+    room_list = list(dict.fromkeys(DEFAULT_ROOMS + db_rooms))
 
     return jsonify({
         "ok": True,
-        "username": username
+        "rooms": room_list
     })
+
+
+@app.route("/api/users/search")
+def api_users_search():
+    username = current_username()
+
+    if not username:
+        return jsonify({"ok": False, "message": "未登录"}), 401
+
+    keyword = str(request.args.get("q", "")).strip()
+
+    users = [item for item in search_users(keyword, limit=10) if item != username]
+
+    return jsonify({
+        "ok": True,
+        "users": users
+    })
+
+
+@app.route("/api/private_history/<target_user>")
+def api_private_history(target_user):
+    username = current_username()
+
+    if not username:
+        return jsonify({"ok": False, "message": "未登录"}), 401
+
+    target_user = str(target_user).strip()
+
+    if not target_user or not user_exists(target_user):
+        return jsonify({"ok": False, "message": "目标用户不存在"}), 404
+
+    messages = get_private_messages(username, target_user, limit=100)
+
+    # 打开某个私聊窗口时，认为这个人发给我的消息已经读过。
+    mark_private_messages_read(username, target_user)
+
+    return jsonify({
+        "ok": True,
+        "messages": messages
+    })
+
+
+@app.route("/api/private_read/<target_user>", methods=["POST"])
+def api_private_read(target_user):
+    username = current_username()
+
+    if not username:
+        return jsonify({"ok": False, "message": "未登录"}), 401
+
+    target_user = str(target_user).strip()
+    if not target_user:
+        return jsonify({"ok": False, "message": "目标用户不能为空"}), 400
+
+    if not user_exists(target_user):
+        return jsonify({"ok": False, "message": "目标用户不存在"}), 404
+
+    mark_private_messages_read(username, target_user)
+
+    return jsonify({"ok": True})
 
 
 @app.route("/api/conversations")
@@ -152,9 +231,262 @@ def api_conversations():
     })
 
 
+@socketio.on("join")
+def handle_join(data):
+    username = current_username()
+    room_name = str((data or {}).get("room", "")).strip()
+    sid = request.sid
+
+    if not username:
+        emit("error_message", "请先登录")
+        return
+
+    if not room_name:
+        emit("error_message", "房间名不能为空")
+        return
+
+    create_room_if_not_exists(room_name, now_full_time())
+
+    if sid in user_sessions:
+        old_username = user_sessions[sid]["username"]
+        old_room = user_sessions[sid]["room"]
+
+        if old_room:
+            leave_room(old_room)
+
+            if old_room in room_users and old_username in room_users[old_room]:
+                room_users[old_room].remove(old_username)
+
+                leave_message = build_system_message(f"{old_username} 离开了房间 {old_room}")
+
+                save_message(
+                    old_room,
+                    leave_message["sender"],
+                    leave_message["text"],
+                    leave_message["type"],
+                    leave_message["time"],
+                    now_full_time()
+                )
+
+                socketio.emit("message", leave_message, to=old_room)
+                broadcast_user_list(old_room)
+
+    join_room(room_name)
+
+    if room_name not in room_users:
+        room_users[room_name] = []
+
+    if username not in room_users[room_name]:
+        room_users[room_name].append(username)
+
+    user_sessions[sid] = {
+        "username": username,
+        "room": room_name
+    }
+
+    user_sid_map[username] = sid
+
+    history = get_recent_messages(room_name, limit=100)
+    emit("history", history)
+
+    join_message = build_system_message(f"{username} 进入了房间 {room_name}")
+
+    save_message(
+        room_name,
+        join_message["sender"],
+        join_message["text"],
+        join_message["type"],
+        join_message["time"],
+        now_full_time()
+    )
+
+    socketio.emit("message", join_message, to=room_name)
+    broadcast_user_list(room_name)
+
+
+@socketio.on("message")
+def handle_message(data):
+    username = current_username()
+    room_name = str((data or {}).get("room", "")).strip()
+    msg = str((data or {}).get("msg", "")).strip()
+    ai_enabled = bool((data or {}).get("ai_enabled", False))
+
+    if not username:
+        emit("error_message", "请先登录")
+        return
+
+    if not room_name or not msg:
+        return
+
+    user_message = build_user_message(username, msg, "user")
+
+    save_message(
+        room_name,
+        user_message["sender"],
+        user_message["text"],
+        user_message["type"],
+        user_message["time"],
+        now_full_time()
+    )
+
+    socketio.emit("message", user_message, to=room_name)
+
+    if not (ai_enabled and msg.lower().startswith("@ai")):
+        return
+
+    ai_question = msg[3:].strip()
+
+    if not ai_question:
+        ai_question = "请告诉用户：你可以这样用我：@ai 什么是API？ / @ai 总结 / @ai 笔记 / @ai 老师 解释一下WebSocket"
+
+    mode = "default"
+
+    recent_messages = get_recent_messages(room_name, limit=30)
+    context_lines = []
+
+    for item in recent_messages:
+        if item.get("type") != "system":
+            context_lines.append(f"{item['sender']}: {item['text']}")
+
+    context = "\n".join(context_lines)
+
+    if ai_question.startswith("总结"):
+        mode = "summary"
+        ai_question = "请总结这个房间最近的聊天内容。"
+
+    elif ai_question.startswith("笔记"):
+        mode = "notes"
+        ai_question = "请根据这个房间最近的聊天内容生成学习笔记。"
+
+    elif ai_question.startswith("老师"):
+        mode = "teacher"
+        ai_question = ai_question.replace("老师", "", 1).strip()
+
+    elif ai_question.startswith("学长"):
+        mode = "senior"
+        ai_question = ai_question.replace("学长", "", 1).strip()
+
+    elif ai_question.startswith("吐槽"):
+        mode = "funny"
+        ai_question = ai_question.replace("吐槽", "", 1).strip()
+
+    ai_id = str(uuid.uuid4())
+    ai_time = now_display_time()
+
+    socketio.emit("ai_start", {
+        "id": ai_id,
+        "sender": "AI助手",
+        "type": "ai",
+        "time": ai_time
+    }, to=room_name)
+
+    full_text = ""
+
+    for chunk in stream_ai(ai_question, mode=mode, context=context):
+        full_text += chunk
+
+        socketio.emit("ai_chunk", {
+            "id": ai_id,
+            "text": chunk
+        }, to=room_name)
+
+        socketio.sleep(0)
+
+    if not full_text:
+        full_text = "AI暂时没有返回内容。"
+
+    save_message(
+        room_name,
+        "AI助手",
+        full_text,
+        "ai",
+        ai_time,
+        now_full_time()
+    )
+
+    socketio.emit("ai_end", {
+        "id": ai_id
+    }, to=room_name)
+
+
+@socketio.on("private_message")
+def handle_private_message(data):
+    sender = current_username()
+    to_user = str((data or {}).get("to", "")).strip()
+    msg = str((data or {}).get("msg", "")).strip()
+
+    if not sender:
+        emit("error_message", "请先登录")
+        return
+
+    if not to_user or not msg:
+        return
+
+    if to_user == sender:
+        emit("error_message", "不能给自己发私聊")
+        return
+
+    if not user_exists(to_user):
+        emit("error_message", "目标用户不存在")
+        return
+
+    time_str = now_display_time()
+
+    save_private_message(
+        sender,
+        to_user,
+        msg,
+        time_str,
+        now_full_time()
+    )
+
+    message_data = {
+        "type": "private",
+        "sender": sender,
+        "to": to_user,
+        "text": msg,
+        "time": time_str
+    }
+
+    target_sid = user_sid_map.get(to_user)
+
+    if target_sid:
+        socketio.emit("private_message", message_data, to=target_sid)
+
+    emit("private_message", message_data)
+
+
 @socketio.on("disconnect")
 def handle_disconnect():
-    pass
+    sid = request.sid
+
+    if sid not in user_sessions:
+        return
+
+    username = user_sessions[sid]["username"]
+    room_name = user_sessions[sid]["room"]
+
+    if username in user_sid_map and user_sid_map[username] == sid:
+        del user_sid_map[username]
+
+    if room_name in room_users and username in room_users[room_name]:
+        room_users[room_name].remove(username)
+
+    leave_message = build_system_message(f"{username} 离开了房间 {room_name}")
+
+    save_message(
+        room_name,
+        leave_message["sender"],
+        leave_message["text"],
+        leave_message["type"],
+        leave_message["time"],
+        now_full_time()
+    )
+
+    socketio.emit("message", leave_message, to=room_name)
+    broadcast_user_list(room_name)
+
+    del user_sessions[sid]
 
 
 init_database()
@@ -162,22 +494,3 @@ init_database()
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
     socketio.run(app, host="0.0.0.0", port=port)
-```
-
-注意：
-
-```text
-这是“极端强制重新登录模式”
-```
-
-刷新页面就会退出登录。
-
-包括：
-
-```text
-F5
-Ctrl+R
-重新打开页面
-```
-
-都会重新登录。

@@ -732,6 +732,19 @@
     </div>
 </div>
 
+
+<script>
+(function forceReloginOnRefresh() {
+    const nav = performance.getEntriesByType("navigation")[0];
+    if (nav && nav.type === "reload") {
+        navigator.sendBeacon("/api/logout");
+        sessionStorage.removeItem("chat_page_loaded");
+        location.replace("/login");
+        return;
+    }
+})();
+</script>
+
 <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
 
 <script>
