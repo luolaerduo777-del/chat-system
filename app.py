@@ -18,6 +18,8 @@ from database import (
     get_private_messages,
     mark_private_messages_read,
     get_conversations,
+    search_users,
+    user_exists,
 )
 from ai_service import stream_ai
 
@@ -155,6 +157,23 @@ def api_rooms():
     })
 
 
+@app.route("/api/users/search")
+def api_users_search():
+    username = current_username()
+
+    if not username:
+        return jsonify({"ok": False, "message": "未登录"}), 401
+
+    keyword = str(request.args.get("q", "")).strip()
+
+    users = [item for item in search_users(keyword, limit=10) if item != username]
+
+    return jsonify({
+        "ok": True,
+        "users": users
+    })
+
+
 @app.route("/api/private_history/<target_user>")
 def api_private_history(target_user):
     username = current_username()
@@ -163,6 +182,10 @@ def api_private_history(target_user):
         return jsonify({"ok": False, "message": "未登录"}), 401
 
     target_user = str(target_user).strip()
+
+    if not target_user or not user_exists(target_user):
+        return jsonify({"ok": False, "message": "目标用户不存在"}), 404
+
     messages = get_private_messages(username, target_user, limit=100)
 
     # 打开某个私聊窗口时，认为这个人发给我的消息已经读过。
@@ -184,6 +207,9 @@ def api_private_read(target_user):
     target_user = str(target_user).strip()
     if not target_user:
         return jsonify({"ok": False, "message": "目标用户不能为空"}), 400
+
+    if not user_exists(target_user):
+        return jsonify({"ok": False, "message": "目标用户不存在"}), 404
 
     mark_private_messages_read(username, target_user)
 
@@ -398,6 +424,10 @@ def handle_private_message(data):
 
     if to_user == sender:
         emit("error_message", "不能给自己发私聊")
+        return
+
+    if not user_exists(to_user):
+        emit("error_message", "目标用户不存在")
         return
 
     time_str = now_display_time()

@@ -721,7 +721,8 @@
             <ul class="conversation-list" id="conversationList"></ul>
 
             <div class="direct-private-box">
-                <input id="privateUserInput" placeholder="输入用户名，直接开始私聊" />
+                <input id="privateUserInput" list="privateUserSuggestions" placeholder="输入用户名，直接开始私聊" />
+                <datalist id="privateUserSuggestions"></datalist>
                 <button onclick="startPrivateChatByInput()">开始私聊</button>
             </div>
             <div class="conversation-title">在线用户</div>
@@ -1240,11 +1241,10 @@ async function markPrivateRead(user) {
 }
 
 async function startPrivateChat(user) {
-    if (user === currentUsername) return;
+    if (!user || user === currentUsername) return;
 
-    ensureConversation(user);
+    const oldPrivateTarget = privateTarget;
     privateTarget = user;
-    unreadMap[user] = 0;
 
     document.getElementById("messages").innerHTML = "";
     updateStatus();
@@ -1254,13 +1254,28 @@ async function startPrivateChat(user) {
         const res = await fetch(`/api/private_history/${encodeURIComponent(user)}`);
         const data = await res.json();
 
-        if (data.ok) {
-            privateChatMap[user] = data.messages || [];
-            unreadMap[user] = 0;
-            await markPrivateRead(user);
+        if (!data.ok) {
+            privateTarget = oldPrivateTarget;
+            updateStatus();
+            renderUserList(lastUserList);
+            renderConversationList();
+            alert(data.message || "无法开始私聊");
+            return;
         }
+
+        ensureConversation(user);
+        moveConversationTop(user);
+        privateChatMap[user] = data.messages || [];
+        unreadMap[user] = 0;
+        await markPrivateRead(user);
     } catch (e) {
+        privateTarget = oldPrivateTarget;
+        updateStatus();
+        renderUserList(lastUserList);
+        renderConversationList();
         console.error("加载私聊历史失败：", e);
+        alert("加载私聊失败，请稍后重试");
+        return;
     }
 
     const history = privateChatMap[user] || [];
@@ -1414,11 +1429,57 @@ async function loadConversations() {
     }
 }
 
+
+let privateSearchTimer = null;
+
+async function searchPrivateUsers(keyword) {
+    const list = document.getElementById("privateUserSuggestions");
+    if (!list) return;
+
+    list.innerHTML = "";
+
+    if (!keyword || keyword.trim().length === 0) return;
+
+    try {
+        const res = await fetch(`/api/users/search?q=${encodeURIComponent(keyword.trim())}`);
+        const data = await res.json();
+
+        if (!data.ok) return;
+
+        (data.users || []).forEach(user => {
+            const option = document.createElement("option");
+            option.value = user;
+            list.appendChild(option);
+        });
+    } catch (e) {
+        console.error("搜索用户失败：", e);
+    }
+}
+
+function bindDirectPrivateSearch() {
+    const input = document.getElementById("privateUserInput");
+    if (!input) return;
+
+    input.addEventListener("input", () => {
+        clearTimeout(privateSearchTimer);
+        privateSearchTimer = setTimeout(() => {
+            searchPrivateUsers(input.value);
+        }, 250);
+    });
+
+    input.addEventListener("keydown", event => {
+        if (event.key === "Enter") {
+            startPrivateChatByInput();
+        }
+    });
+}
+
 async function initPage() {
     loadTheme();
     await loadMe();
     renderRecentRooms();
     await loadConversations();
+    bindDirectPrivateSearch();
     updateStatus();
 }
 

@@ -114,6 +114,47 @@ def get_user_by_username(username: str):
     return user
 
 
+
+
+def search_users(keyword: str, limit: int = 10):
+    """按用户名搜索用户，用于直接私聊入口。"""
+    keyword = (keyword or "").strip()
+    if not keyword:
+        return []
+
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        SELECT username
+        FROM users
+        WHERE username ILIKE %s
+        ORDER BY username ASC
+        LIMIT %s
+    """, (f"%{keyword}%", limit))
+
+    rows = cursor.fetchall()
+
+    cursor.close()
+    conn.close()
+
+    return [row["username"] for row in rows]
+
+
+def user_exists(username: str) -> bool:
+    """判断用户是否存在，防止给不存在的账号发私聊。"""
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("SELECT 1 FROM users WHERE username = %s LIMIT 1", (username,))
+    row = cursor.fetchone()
+
+    cursor.close()
+    conn.close()
+
+    return row is not None
+
+
 def create_room_if_not_exists(room_name: str, created_at: str):
     conn = get_connection()
     cursor = conn.cursor()
