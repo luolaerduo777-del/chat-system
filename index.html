@@ -481,6 +481,41 @@
             border-bottom: 1px solid var(--border);
         }
 
+
+        .direct-private-box {
+            padding: 14px 18px;
+            border-bottom: 1px solid var(--border);
+            background: var(--card-soft);
+        }
+
+        .direct-private-box input {
+            width: 100%;
+            border: 1px solid var(--border);
+            background: var(--card);
+            color: var(--text);
+            padding: 11px 12px;
+            border-radius: 12px;
+            outline: none;
+            font-size: 13px;
+        }
+
+        .direct-private-box button {
+            width: 100%;
+            margin-top: 8px;
+            border: none;
+            background: var(--primary);
+            color: white;
+            padding: 10px;
+            border-radius: 12px;
+            cursor: pointer;
+            font-weight: 900;
+        }
+
+        .direct-private-box button:hover {
+            background: var(--primary-dark);
+            transform: translateY(-1px);
+        }
+
         .conversation-title {
             padding: 14px 18px 6px;
             font-size: 13px;
@@ -685,6 +720,10 @@
             </div>
             <ul class="conversation-list" id="conversationList"></ul>
 
+            <div class="direct-private-box">
+                <input id="privateUserInput" placeholder="输入用户名，直接开始私聊" />
+                <button onclick="startPrivateChatByInput()">开始私聊</button>
+            </div>
             <div class="conversation-title">在线用户</div>
             <div class="online-count" id="onlineCount" style="padding: 0 18px 8px;">当前 0 人</div>
             <ul class="user-list" id="userList"></ul>
@@ -1006,11 +1045,6 @@ function selectRoom(roomName) {
 }
 
 function sendMessage() {
-    if (!hasJoined) {
-        alert("请先进入房间");
-        return;
-    }
-
     const input = document.getElementById("message");
     const msg = input.value.trim();
 
@@ -1022,6 +1056,11 @@ function sendMessage() {
             msg: msg
         });
         input.value = "";
+        return;
+    }
+
+    if (!hasJoined) {
+        alert("请先进入房间，或者在右侧输入用户名开始私聊");
         return;
     }
 
@@ -1167,6 +1206,25 @@ function renderConversationList() {
 
         list.appendChild(li);
     });
+}
+
+
+function startPrivateChatByInput() {
+    const input = document.getElementById("privateUserInput");
+    const user = input.value.trim();
+
+    if (!user) {
+        alert("请输入要私聊的用户名");
+        return;
+    }
+
+    if (user === currentUsername) {
+        alert("不能给自己发私聊");
+        return;
+    }
+
+    input.value = "";
+    startPrivateChat(user);
 }
 
 async function markPrivateRead(user) {
@@ -1315,6 +1373,12 @@ socket.on("error_message", msg => alert(msg));
 document.getElementById("message").addEventListener("keydown", event => {
     if (event.key === "Enter") {
         sendMessage();
+    }
+});
+
+document.getElementById("privateUserInput").addEventListener("keydown", event => {
+    if (event.key === "Enter") {
+        startPrivateChatByInput();
     }
 });
 
